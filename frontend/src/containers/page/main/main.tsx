@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import type { PollStatus, PollSummary } from '@/api/types'
 import { getServerApi, loadOrNotFound } from '@/api/server'
 import { PollSearch } from '@/components/common/search'
-import { CreateMenu } from '@/containers/page/main/components/create'
 import { PollGrid, type PollGridEmpty } from '@/containers/page/main/components/pollGrid'
 import { MainTabs } from '@/containers/widgets/tabs'
 import { pollHref } from '@/lib/pollHref'
@@ -58,9 +57,8 @@ async function loadAllMine() {
 export async function MainPage() {
     const polls = await loadOrNotFound(loadAllMine, '/')
 
-    // pb-24 เว้นที่ให้การ์ดแถวสุดท้ายเลื่อนพ้นปุ่มเมนูลอยมุมขวาล่าง (สูง 56px + ขอบ 16px)
     return (
-        <div className='relative flex flex-col gap-2 pb-24'>
+        <div className='relative flex flex-col gap-2'>
             <h1 className=' text-4xl font-bold font-heading'>โพลของคุณ</h1>
             <PollSearch polls={polls} />
             <MainTabs
@@ -72,7 +70,6 @@ export async function MainPage() {
                     />
                 )}
             />
-            <CreateMenu/>
         </div>
     )
 }

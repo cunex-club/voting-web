@@ -59,7 +59,7 @@ export function AddPresetDialog() {
 
     return (
         <>
-            <Button className='fixed bottom-4 right-4 px-4 font-heading text-lg font-bold' onClick={() => setOpen(true)}>
+            <Button className='fixed bottom-4 right-20 h-14 shadow-md px-4 font-heading text-lg font-bold' onClick={() => setOpen(true)}>
                 <Plus className='size-5' />
                 เพิ่ม preset
             </Button>
