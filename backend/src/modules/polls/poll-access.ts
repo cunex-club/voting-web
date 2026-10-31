@@ -1,7 +1,11 @@
+import type { PollAudience } from '../../infra/database/db.js';
 import type { User } from '../users/users.repository.js';
 import { isEligible } from './eligibility.js';
 import type { PollAggregate, PollRow } from './polls.repository.js';
 import { resultDisplayOf } from './result-display.js';
+
+/** Only polls for all of Chula wait for an admin; the rest go straight to approved. */
+export const needsReview = (audience: PollAudience) => audience === 'chula';
 
 const isStaff = (poll: PollRow, user: User) =>
   poll.ownerId === user.id || user.role === 'admin';

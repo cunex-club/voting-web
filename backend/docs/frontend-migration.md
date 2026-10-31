@@ -250,7 +250,7 @@ backend ตั้ง `CUNEX_MODE=mock` ไว้ มีบัญชีทดล�
 |---|---|
 | บันทึกฉบับร่าง (ครั้งแรก) | `POST /polls` body = PollDraft → `201` ได้ `id` กับ `version` |
 | บันทึกฉบับร่าง (ครั้งต่อไป) | `PUT /polls/:id` + header `If-Match: <version>` body = PollDraft ทั้งก้อน |
-| ส่งขออนุมัติ | บันทึกก่อน (POST/PUT) แล้ว `POST /polls/:id/submit` |
+| ส่งขออนุมัติ / ส่งโพล | บันทึกก่อน (POST/PUT) แล้ว `POST /polls/:id/submit` · ทั้งจุฬาฯ ได้ `pending_review` ขอบเขตอื่นได้ `approved` |
 | ลบร่าง | `DELETE /polls/:id` |
 | โหลดร่างมาแก้ | `GET /polls/:id` |
 | อัปโหลดรูป | ดู [ข้อ 5](#5-อัปโหลดรูป) |

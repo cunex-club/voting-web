@@ -39,6 +39,8 @@ async function submittedPoll(title: string) {
   const { body } = await owner.post('/polls').send({
     title,
     closesAt: days(7),
+    // only Chula-wide polls go through the review queue
+    audience: { type: 'chula' },
     settings: { listedPublicly: true },
     elements: [
       {
@@ -50,6 +52,7 @@ async function submittedPoll(title: string) {
   });
   const res = await owner.post(`/polls/${body.id}/submit`);
   expect(res.status).toBe(200);
+  expect(res.body.status).toBe('pending_review');
   return body.id as string;
 }
 
@@ -101,6 +104,7 @@ describe('review queue', () => {
       .send({
         title: 'second, fixed',
         closesAt: days(7),
+        audience: { type: 'chula' },
         elements: [
           {
             type: 'single_choice',

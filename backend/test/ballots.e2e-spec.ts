@@ -33,7 +33,7 @@ interface Poll {
   text: { id: string };
 }
 
-/** Engineering + anyone who entered in 2566; approved, then published by the owner. */
+/** Engineering + anyone who entered in 2566; skips review (not Chula-wide), then published by the owner. */
 async function openPoll(
   settings: { allowAnswerEdit: boolean },
   opensAt: string | null = null,
@@ -64,10 +64,9 @@ async function openPoll(
       { type: 'text_question', title: 'ข้อเสนอแนะ' },
     ],
   });
-  expect((await owner.post(`/polls/${body.id}/submit`)).status).toBe(200);
-  expect((await admin.post(`/admin/polls/${body.id}/approve`)).status).toBe(
-    200,
-  );
+  const submitted = await owner.post(`/polls/${body.id}/submit`);
+  expect(submitted.status).toBe(200);
+  expect(submitted.body.status).toBe('approved');
   const opened = await owner
     .post(`/polls/${body.id}/publish`)
     .send(publishNow ? { now: true } : {});

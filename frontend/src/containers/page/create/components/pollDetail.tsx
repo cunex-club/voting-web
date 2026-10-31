@@ -36,7 +36,7 @@ export function PollDetail() {
                             value={openTime ? new Date(openTime) : undefined}
                             onChange={(date) => update({ openTime: date ? date.toISOString() : null })}
                         />
-                        <span className='text-sm text-ink-500'>ไม่ตั้ง = เปิดรับโหวตทันทีที่กดเผยแพร่หลังผู้ดูแลอนุมัติ</span>
+                        <span className='text-sm text-ink-500'>ไม่ตั้ง = เปิดรับโหวตทันทีที่กดเผยแพร่ (โพลทั้งจุฬาฯ ต้องรอผู้ดูแลอนุมัติก่อน)</span>
                     </div>
                     <div className='flex flex-col gap-1'>
                         <Label className=' font-bold text-lg'>เวลาปิดโพล</Label>

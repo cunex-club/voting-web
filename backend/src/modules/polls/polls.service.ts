@@ -8,7 +8,12 @@ import { ImagesService } from '../images/images.service.js';
 import type { User } from '../users/users.repository.js';
 import { findProblems } from './completeness.js';
 import { imageRefs } from './poll-images.js';
-import { canSeePoll, canViewResults, isAcceptingVotes } from './poll-access.js';
+import {
+  canSeePoll,
+  canViewResults,
+  isAcceptingVotes,
+  needsReview,
+} from './poll-access.js';
 import {
   closesAtPassed,
   invalidOpensAt,
@@ -135,12 +140,14 @@ export class PollsService {
         { problems },
       );
     }
+    // Only polls for all of Chula go through admin review. Narrower or public
+    // audiences skip the queue and wait for the owner to publish them.
     await this.move(
       user,
       id,
       EDITABLE,
       {
-        status: 'pending_review',
+        status: needsReview(agg.poll.audience) ? 'pending_review' : 'approved',
         submittedAt: new Date(),
       },
       'poll.submit',

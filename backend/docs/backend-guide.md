@@ -110,14 +110,14 @@ Gateway ที่ใช้งานได้จริง: `https://culab-svc.azu
 | POST | `/polls` | สร้างร่างใหม่ |
 | PUT | `/polls/:id` | บันทึกร่าง**ทั้งก้อนทีเดียว** (ตั้งค่า + ขอบเขต + element ทุกตัวตามลำดับ) |
 | DELETE | `/polls/:id` | ลบร่าง |
-| POST | `/polls/:id/submit` | ส่งขออนุมัติ |
+| POST | `/polls/:id/submit` | ส่งโพล: ทั้งจุฬาฯ → `pending_review` รอ admin · สาธารณะ/เฉพาะคณะ → `approved` ทันที |
 | PATCH | `/polls/:id/closes-at` | เลื่อนเวลาปิด |
 | PATCH | `/polls/:id/realtime` | เปิด/ปิดผลเรียลไทม์ (ได้จนกว่าจะเปิดโหวต) |
 | POST | `/polls/:id/publish` | เปิดโหวต (Publish) หลัง admin อนุมัติ |
 | PUT | `/polls/:id/result-display` | ตั้งค่าเผยแพร่ผลให้ผู้ตอบ |
 | POST | `/polls/:id/close` | ปิดก่อนกำหนด (ใส่เหตุผลได้) |
 
-สถานะโพล: `draft → pending_review → approved → open → closed` (ตีกลับ = `rejected` แก้แล้วส่งใหม่ได้)
+สถานะโพล: `draft → pending_review → approved → open → closed` (ตีกลับ = `rejected` แก้แล้วส่งใหม่ได้) · เฉพาะโพลทั้งจุฬาฯ ที่ผ่าน `pending_review` ขอบเขตอื่นส่งแล้วเป็น `approved` เลย
 
 ### รูปภาพ
 

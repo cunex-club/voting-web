@@ -1,6 +1,7 @@
 import type { FormItem } from '@/store/elementStore'
 import { useElementStore } from '@/store/elementStore'
 import { type CreatePollState, formFieldsOf, useCreatePollStore } from '@/store/createPollStore'
+import { extrasToForm, readPollExtras } from '@/lib/pollLocalExtras'
 
 // ฟอร์มสร้างโพลในเครื่องมีชุดเดียว (persist ใน localStorage) ใช้ร่วมกันระหว่าง "โพลใหม่" กับ "แก้ฉบับร่าง"
 // ไฟล์นี้ตัดสินว่าตอนเปิดหน้า create ฟอร์มที่ค้างอยู่เป็นของใคร
@@ -42,7 +43,8 @@ export function prepareCreateForm(draft: { id: string; form: CreatePollState; it
     if (draft) {
         if (loaded) return
         if (!poll.sourceId && hasContent()) stashNewPoll()
-        poll.update(draft.form)
+        // server ไม่มีขอบเขตแบบระบุรหัสกับระบุคนส่ง เติมจากที่เก็บไว้ในเครื่อง
+        poll.update({ ...draft.form, ...extrasToForm(readPollExtras(draft.id), draft.form) })
         poll.setSourceId(draft.id)
         useElementStore.setState({ items: draft.items })
         return

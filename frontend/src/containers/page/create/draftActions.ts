@@ -4,6 +4,7 @@ import { formToDraft } from '@/lib/pollMappers'
 import { useCreatePollStore } from '@/store/createPollStore'
 import { useCreateDraftStore } from '@/store/createDraftStore'
 import { useElementStore, type FormItem } from '@/store/elementStore'
+import { savePollExtras } from '@/lib/pollLocalExtras'
 
 export type DraftResult = { ok: true; poll: PollDetail } | { ok: false; error: string; problems?: string[] }
 
@@ -96,12 +97,14 @@ function toFailure(err: unknown, fallback: string): DraftResult {
 
 // บันทึกฉบับร่างขึ้น server: ยังไม่มี id → POST /polls · มีแล้ว → PUT พร้อม If-Match: version
 export async function saveDraft(): Promise<DraftResult> {
-    const draft = formToDraft(useCreatePollStore.getState(), useElementStore.getState().items)
+    const form = useCreatePollStore.getState()
+    const draft = formToDraft(form, useElementStore.getState().items)
     const { draftId, version, setDraft, setHydratedId } = useCreateDraftStore.getState()
     try {
         const poll = draftId && version !== null ? await api.polls.save(draftId, version, draft) : await api.polls.create(draft)
         setDraft(poll.id, poll.version)
         setHydratedId(poll.id)
+        savePollExtras(poll.id, form)
         // ฟอร์มนี้เป็นของฉบับร่างบน server แล้ว ถ้าค้างในเครื่องจะไม่ถูกนับเป็นโพลใหม่อีก
         useCreatePollStore.getState().setSourceId(poll.id)
         return { ok: true, poll }
@@ -110,14 +113,15 @@ export async function saveDraft(): Promise<DraftResult> {
     }
 }
 
-// ส่งขออนุมัติ = บันทึกล่าสุดก่อน แล้ว POST /submit (backend ตรวจความครบ ไม่ครบได้รายการปัญหากลับมา)
+// ส่งโพล = บันทึกล่าสุดก่อน แล้ว POST /submit (backend ตรวจความครบ ไม่ครบได้รายการปัญหากลับมา)
+// ทั้งจุฬาฯ → รออนุมัติ · ขอบเขตอื่น → อนุมัติแล้ว (เจ้าของกดเปิดโหวตเอง)
 export async function submitDraft(): Promise<DraftResult> {
     const saved = await saveDraft()
     if (!saved.ok) return saved
     try {
         return { ok: true, poll: await api.polls.submit(saved.poll.id) }
     } catch (err) {
-        return toFailure(err, 'ส่งขออนุมัติไม่สำเร็จ')
+        return toFailure(err, 'ส่งโพลไม่สำเร็จ')
     }
 }
 

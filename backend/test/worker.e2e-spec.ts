@@ -13,7 +13,6 @@ let app: NestExpressApplication;
 let worker: INestApplicationContext;
 let db: pg.Client;
 let owner: ReturnType<typeof as>;
-let admin: ReturnType<typeof as>;
 
 beforeAll(async () => {
   ({ app, db } = await createTestApp());
@@ -23,7 +22,8 @@ beforeAll(async () => {
     logger: false,
   });
   owner = as(app, await loginAs(app, 'eng-2567'));
-  admin = as(app, await loginAs(app, 'admin'));
+  // the admin account still has to exist: the role UPDATE below targets it
+  await loginAs(app, 'admin');
   await loginAs(app, 'med-2566');
   await loginAs(app, 'arts-2565');
   await db.query(
@@ -60,10 +60,9 @@ async function approvedPoll(audience: object, closesInMs: number) {
       },
     ],
   });
-  expect((await owner.post(`/polls/${body.id}/submit`)).status).toBe(200);
-  expect((await admin.post(`/admin/polls/${body.id}/approve`)).status).toBe(
-    200,
-  );
+  // restricted and public polls skip admin review
+  const submitted = await owner.post(`/polls/${body.id}/submit`);
+  expect(submitted.body.status).toBe('approved');
   expect((await owner.post(`/polls/${body.id}/publish`)).status).toBe(200);
   return body.id as string;
 }

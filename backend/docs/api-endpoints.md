@@ -53,9 +53,12 @@ Lifecycle (`status`):
 
 ```
 draft ──submit──► pending_review ──approve (admin)──► approved ──publish (owner)──► open ──► closed
-  ▲                     │                                            (at closesAt, or closed early)
-  └──── rejected ◄──────┘  (editable, can be resubmitted)
+  │ ▲                   │                                ▲           (at closesAt, or closed early)
+  │ └── rejected ◄──────┘  (editable, can be resubmitted)│
+  └──submit (audience public / restricted)───────────────┘
 ```
+
+Only `audience.type = "chula"` goes through admin review. `public` and `restricted` polls go from `submit` straight to `approved`.
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
@@ -99,7 +102,7 @@ Audiences: `public` = anyone logged in · `chula` = any CUNEX-verified user ·
 | POST | `/polls` | user | Create a draft. Body = `PollDraft` (all fields optional). → `201 PollDetail` |
 | PUT | `/polls/:pollId` | owner | Replace the whole draft (settings + audience + ordered elements + options) in one transaction. Only in `draft`/`rejected`. Needs `If-Match: <version>` (`428` if missing, `412 VERSION_CONFLICT` + `currentVersion` if stale). → `200 PollDetail` |
 | DELETE | `/polls/:pollId` | owner | Soft delete. Only `draft`/`rejected`. → `204` |
-| POST | `/polls/:pollId/submit` | owner | Validate completeness → `pending_review`. `422 POLL_INCOMPLETE` with `problems: [{ path, message }]` listing every problem. |
+| POST | `/polls/:pollId/submit` | owner | Validate completeness → `pending_review` (audience `chula`) or `approved` (`public` / `restricted`, no admin review). `422 POLL_INCOMPLETE` with `problems: [{ path, message }]` listing every problem. |
 | PATCH | `/polls/:pollId/closes-at` | owner | `{ closesAt }` in `pending_review`, `approved` or `open`. Must be in the future and after `opensAt`. |
 | PATCH | `/polls/:pollId/realtime` | owner | `{ showResultsRealtime }`. Only before voting starts (`pending_review`, `approved`). |
 | GET | `/polls/:pollId/preview` | **public** | Intro card of a published (`open`/`closed`) poll for a shared link opened without logging in: title, description, cover, times, audience, `questionCount`. No questions, results or viewer data. `404` for unpublished, taken-down or missing polls. `GET /faculties` is public too. |

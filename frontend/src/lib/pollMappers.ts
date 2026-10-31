@@ -89,8 +89,10 @@ export function elementToItem(e: Element, index: number): FormItem {
     }
 }
 
+// "ระบุรหัส" backend ยังไม่รองรับ จึงส่งเป็นทั้งจุฬาฯ ไปก่อน รายการรหัสเก็บแค่ในเครื่อง (pollLocalExtras)
 export function audienceOfForm(form: Pick<CreatePollState, 'audienceType' | 'rules'>): Audience {
     if (form.audienceType === 'restricted') return { type: 'restricted', rules: form.rules }
+    if (form.audienceType === 'codes') return { type: 'chula' }
     return { type: form.audienceType }
 }
 
@@ -123,9 +125,13 @@ export function detailToForm(poll: PollDetail): { form: CreatePollState; items: 
             coverImageUrl: poll.coverImageUrl,
             audienceType: poll.audience.type,
             rules: poll.audience.type === 'restricted' ? poll.audience.rules : [],
+            // ช่องที่มีแค่ฝั่งเว็บ: ค่าเริ่มต้นตรงนี้ แล้ว prepareCreateForm ทับด้วยค่าที่เก็บไว้ในเครื่อง
+            codeKind: 'STUDENT',
+            codesText: '',
             realtime: poll.settings.showResultsRealtime,
             allowAnswerEdit: poll.settings.allowAnswerEdit,
             listedPublicly: poll.settings.listedPublicly,
+            identifySender: false,
         },
         items: poll.elements.map(elementToItem),
     }

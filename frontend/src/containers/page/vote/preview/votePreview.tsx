@@ -9,6 +9,7 @@ import { useCreateDraftStore } from '@/store/createDraftStore'
 import { audienceLabel, audienceScope } from '@/lib/audienceLabel'
 import { useFaculties } from '@/hooks/useFaculties'
 import { audienceOfForm } from '@/lib/pollMappers'
+import { AUDIENCE_DESCRIPTION } from '@/lib/pollLabels'
 import { firstMissingRequired, paginate, questionsOf, type Answers, type AnswerValue, type VoteItem, type VoterPoll } from '@/lib/voteForm'
 import AvatarPopup from '@/containers/widgets/components/avator-popup'
 import { PollIntroCard } from '../components/pollIntroCard'
@@ -49,7 +50,8 @@ export function VotePreview() {
         closedEarly: false,
         closeReason: null,
         audience,
-        audienceLabel: audienceLabel(audience, faculties),
+        // "ระบุรหัส" ส่งเป็นทั้งจุฬาฯ แต่หน้าตัวอย่างให้ผู้สร้างเห็นขอบเขตที่ตั้งไว้
+        audienceLabel: form.audienceType === 'codes' ? AUDIENCE_DESCRIPTION.codes : audienceLabel(audience, faculties),
         audienceScope: audienceScope(audience, faculties),
         realtime: form.realtime,
         allowAnswerEdit: form.allowAnswerEdit,

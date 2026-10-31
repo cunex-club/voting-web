@@ -1,4 +1,5 @@
-import type { AudienceType, PollStatus, PollSummary } from '@/api/types'
+import type { PollStatus, PollSummary } from '@/api/types'
+import type { FormAudienceType } from '@/store/createPollStore'
 
 export const STATUS_LABEL: Record<PollStatus, string> = {
     draft: 'ฉบับร่าง',
@@ -20,17 +21,24 @@ export const STATUS_BADGE_CLASS: Record<PollStatus, string> = {
     rejected: 'bg-red-100 text-red-200',
 }
 
-export const AUDIENCE_LABEL: Record<AudienceType, string> = {
+// codes = แบบ "ระบุรหัส" ที่มีแค่ในหน้าสร้างโพล (โพลจาก API ไม่มีชนิดนี้)
+export const AUDIENCE_LABEL: Record<FormAudienceType, string> = {
     chula: 'ทั้งจุฬาฯ',
     restricted: 'เฉพาะคณะ/ปีเข้า',
     public: 'สาธารณะ',
+    codes: 'ระบุรหัส',
 }
 
-export const AUDIENCE_DESCRIPTION: Record<AudienceType, string> = {
+export const AUDIENCE_DESCRIPTION: Record<FormAudienceType, string> = {
     chula: 'นิสิตและบุคลากรจุฬาฯ ที่ยืนยันตัวตนผ่าน CUNEX',
     restricted: 'เฉพาะคณะและปีเข้าที่เลือก ต้องยืนยันตัวตนผ่าน CUNEX',
     public: 'ทุกคนที่เข้าสู่ระบบ',
+    codes: 'เฉพาะรหัสนิสิต/บุคลากรที่กำหนด',
 }
+
+// เฉพาะโพลทั้งจุฬาฯ ที่ต้องรอผู้ดูแลอนุมัติ (backend: needsReview) ขอบเขตอื่นส่งแล้วพร้อมเปิดโหวตเลย
+// "ระบุรหัส" ยังส่งไป backend เป็นทั้งจุฬาฯ จึงต้องรออนุมัติด้วย
+export const needsReview = (audience: FormAudienceType) => audience === 'chula' || audience === 'codes'
 
 // ใช้ timeZone คงที่ เพื่อให้ server กับ client แสดงเวลาเหมือนกันตอน hydrate
 const closeFormatter = new Intl.DateTimeFormat('th-TH', {
