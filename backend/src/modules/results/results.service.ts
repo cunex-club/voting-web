@@ -67,7 +67,7 @@ export class ResultsService {
     pollId: string,
     breakdown: Breakdown | 'none',
   ): Promise<CachedResults> {
-    const agg = await this.polls.find(pollId);
+    const agg = await this.polls.find(pollId, user);
     if (!agg || !canSeePoll(agg, user)) throw pollNotFound();
     const { poll } = agg;
     const staff = poll.ownerId === user.id || user.role === 'admin';
@@ -93,7 +93,7 @@ export class ResultsService {
     cursor: string | undefined,
     limit: number,
   ) {
-    const agg = await this.polls.find(pollId);
+    const agg = await this.polls.find(pollId, user);
     if (!agg || !canSeePoll(agg, user)) throw pollNotFound();
     // Free text can identify people; only the owner and admins read it.
     if (agg.poll.ownerId !== user.id && user.role !== 'admin') {
@@ -111,6 +111,90 @@ export class ResultsService {
       ? Buffer.from(cursor, 'base64url').toString()
       : undefined;
     return this.repo.textAnswers(pollId, elementId, after, limit);
+  }
+
+  /**
+   * "ระบุคนส่ง": who answered what, a page at a time, for the owner and
+   * admins of a poll that told its voters their id goes with the answers.
+   */
+  async responses(
+    user: User,
+    pollId: string,
+    cursor: string | undefined,
+    limit: number,
+  ) {
+    const agg = await this.identifiedPoll(user, pollId);
+    const page = await this.repo.responses(pollId, decodeCursor(cursor), limit);
+    const last = page.ballots.at(-1);
+    return {
+      items: toResponses(agg, page),
+      nextCursor:
+        page.hasMore && last
+          ? Buffer.from(
+              JSON.stringify({
+                t: last.submittedAt.toISOString(),
+                id: last.id,
+              }),
+            ).toString('base64url')
+          : null,
+    };
+  }
+
+  /**
+   * The same as a CSV file: one row per respondent, one column per question,
+   * chosen options by label. Starts with a BOM so Excel reads Thai correctly.
+   */
+  async responsesCsv(user: User, pollId: string) {
+    const agg = await this.identifiedPoll(user, pollId);
+    const questions = agg.elements.filter((e) => QUESTION_TYPES.has(e.type));
+    const labels = new Map(
+      questions.flatMap((e) => e.options.map((o) => [o.id, o.label] as const)),
+    );
+    const lines = [
+      [
+        'รหัส',
+        'เวลาที่ส่ง',
+        ...questions.map((q, i) => q.title || `ข้อ ${i + 1}`),
+      ],
+    ];
+    let after: { t: Date; id: string } | undefined;
+    for (;;) {
+      const page = await this.repo.responses(pollId, after, 1000);
+      for (const r of toResponses(agg, page)) {
+        const byElement = new Map(r.answers.map((a) => [a.elementId, a]));
+        lines.push([
+          r.code ?? '',
+          r.submittedAt.toISOString(),
+          ...questions.map((q) => {
+            const a = byElement.get(q.id);
+            if (!a) return '';
+            return 'text' in a
+              ? a.text
+              : a.optionIds.map((id) => labels.get(id) ?? '').join(' | ');
+          }),
+        ]);
+      }
+      const last = page.ballots.at(-1);
+      if (!page.hasMore || !last) break;
+      after = { t: last.submittedAt, id: last.id };
+    }
+    return BOM + lines.map((l) => l.map(csvCell).join(',')).join('\r\n');
+  }
+
+  private async identifiedPoll(user: User, pollId: string) {
+    const agg = await this.polls.find(pollId, user);
+    if (!agg || !canSeePoll(agg, user)) throw pollNotFound();
+    if (agg.poll.ownerId !== user.id && user.role !== 'admin') {
+      throw resultsHidden();
+    }
+    if (!agg.poll.identifySender) {
+      throw new AppError(
+        'SENDER_NOT_IDENTIFIED',
+        HttpStatus.CONFLICT,
+        'This poll does not identify who answered',
+      );
+    }
+    return agg;
   }
 
   private async hasVoted(user: User, pollId: string) {
@@ -263,6 +347,67 @@ function toGroups(grouped: Awaited<ReturnType<ResultsRepository['byGroup']>>) {
   return [...groups.values()].sort(
     (a, b) => b.total - a.total || a.group.localeCompare(b.group),
   );
+}
+
+type ResponsesPage = Awaited<ReturnType<ResultsRepository['responses']>>;
+
+/** Ballots with their answers in question order (choices in option order). */
+function toResponses(agg: PollAggregate, page: ResponsesPage) {
+  const position = new Map(
+    agg.elements.flatMap((e) => [
+      [e.id, e.position] as const,
+      ...e.options.map((o) => [o.id, o.position] as const),
+    ]),
+  );
+  const at = (id: string) => position.get(id) ?? 0;
+  return page.ballots.map((b) => {
+    const chosen = new Map<string, string[]>();
+    for (const c of page.choices) {
+      if (c.ballotId !== b.id) continue;
+      chosen.set(c.elementId, [...(chosen.get(c.elementId) ?? []), c.optionId]);
+    }
+    const answers: (
+      | { elementId: string; optionIds: string[] }
+      | { elementId: string; text: string }
+    )[] = [
+      ...[...chosen].map(([elementId, optionIds]) => ({
+        elementId,
+        optionIds: optionIds.sort((x, y) => at(x) - at(y)),
+      })),
+      ...page.texts
+        .filter((t) => t.ballotId === b.id)
+        .map((t) => ({ elementId: t.elementId, text: t.answer })),
+    ];
+    return {
+      code: b.respondentCode,
+      submittedAt: b.submittedAt,
+      answers: answers.sort((x, y) => at(x.elementId) - at(y.elementId)),
+    };
+  });
+}
+
+function decodeCursor(cursor: string | undefined) {
+  if (!cursor) return undefined;
+  try {
+    const c = JSON.parse(Buffer.from(cursor, 'base64url').toString()) as {
+      t?: unknown;
+      id?: unknown;
+    };
+    return typeof c.t === 'string' && typeof c.id === 'string'
+      ? { t: new Date(c.t), id: c.id }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Quoted when needed; a leading = + - @ is defused so Excel won't run it. */
+// Excel needs it to read the file as UTF-8 (Thai).
+const BOM = String.fromCharCode(0xfeff);
+
+function csvCell(value: string) {
+  const v = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
 function resultsHidden() {

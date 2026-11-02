@@ -11,3 +11,8 @@ export const api = makeApi(createRequester(API_BASE))
 export const authUrls = {
     cunex: (returnTo = '/') => buildUrl(API_BASE, '/auth/cunex/login', { returnTo }),
 }
+
+// ไฟล์ที่ดาวน์โหลดด้วยลิงก์ตรง (browser ส่ง cookie ไปเอง) ไม่ใช่ fetch
+export const downloadUrls = {
+    responsesCsv: (pollId: string) => buildUrl(API_BASE, `/polls/${pollId}/results/responses.csv`, {}),
+}

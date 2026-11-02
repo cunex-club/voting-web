@@ -14,7 +14,7 @@ import type {
   PollStatus,
 } from '../../infra/database/db.js';
 import type { User } from '../users/users.repository.js';
-import type { AudienceRule } from './eligibility.js';
+import { type AudienceRule, respondentCode } from './eligibility.js';
 import type { PollDraftInput } from './poll-draft.schema.js';
 
 export type PollRow = Selectable<Polls>;
@@ -24,6 +24,10 @@ export type ElementRow = Selectable<PollElements> & {
 export interface PollAggregate {
   poll: PollRow;
   rules: AudienceRule[];
+  /** Codes polls: the viewer given to find() is on the list. */
+  listed: boolean;
+  /** Codes polls: how many ids are on the list (the list itself: audienceCodes). */
+  codeCount: number;
   elements: ElementRow[];
   reviews: { decision: string; comment: string | null; createdAt: Date }[];
 }
@@ -90,13 +94,21 @@ export class PollsRepository {
         .deleteFrom('pollAudienceRules')
         .where('pollId', '=', id)
         .execute();
+      await tx
+        .deleteFrom('pollAudienceCodes')
+        .where('pollId', '=', id)
+        .execute();
       await tx.deleteFrom('pollElements').where('pollId', '=', id).execute();
       await writeContent(tx, id, draft);
       return true;
     });
   }
 
-  async find(id: string): Promise<PollAggregate | undefined> {
+  /**
+   * The poll with its rules and content. `viewer` is who is asking: for a
+   * codes poll it decides `listed`, without loading the whole list.
+   */
+  async find(id: string, viewer?: User): Promise<PollAggregate | undefined> {
     const poll = await this.db
       .selectFrom('polls')
       .selectAll()
@@ -105,7 +117,9 @@ export class PollsRepository {
       .executeTakeFirst();
     if (!poll) return undefined;
 
-    const [rules, elements, options, reviews] = await Promise.all([
+    const code = viewer ? respondentCode(viewer) : null;
+    const isCodes = poll.audience === 'codes';
+    const [rules, elements, options, reviews, codes] = await Promise.all([
       this.db
         .selectFrom('pollAudienceRules')
         .select(['facultyCode', 'studentYear'])
@@ -136,17 +150,40 @@ export class PollsRepository {
         .where('pollId', '=', id)
         .orderBy('createdAt', 'desc')
         .execute(),
+      isCodes
+        ? this.db
+            .selectFrom('pollAudienceCodes')
+            .select([
+              (eb) => eb.fn.countAll<string>().as('n'),
+              sql<boolean>`bool_or(code = ${code ?? ''})`.as('listed'),
+            ])
+            .where('pollId', '=', id)
+            .executeTakeFirstOrThrow()
+        : null,
     ]);
 
     return {
       poll,
       rules,
+      listed: !!code && !!viewer?.isChulaVerified && !!codes?.listed,
+      codeCount: Number(codes?.n ?? 0),
       elements: elements.map((e) => ({
         ...e,
         options: options.filter((o) => o.elementId === e.id),
       })),
       reviews,
     };
+  }
+
+  /** The full id list of a codes poll, for its owner and admins. */
+  async audienceCodes(id: string): Promise<string[]> {
+    const rows = await this.db
+      .selectFrom('pollAudienceCodes')
+      .select('code')
+      .where('pollId', '=', id)
+      .orderBy('code')
+      .execute();
+    return rows.map((r) => r.code);
   }
 
   /** Moves a poll between states if (and only if) it is currently in `from`. */
@@ -310,9 +347,24 @@ export class PollsRepository {
 export function eligibleFor(eb: ExpressionBuilder<DB, 'polls'>, user: User) {
   const publicPoll = eb('polls.audience', '=', 'public');
   if (!user.isChulaVerified) return publicPoll;
+  const code = respondentCode(user);
   return eb.or([
     publicPoll,
     eb('polls.audience', '=', 'chula'),
+    ...(code
+      ? [
+          eb.and([
+            eb('polls.audience', '=', 'codes'),
+            eb.exists(
+              eb
+                .selectFrom('pollAudienceCodes as c')
+                .select(sql.lit(1).as('one'))
+                .whereRef('c.pollId', '=', 'polls.id')
+                .where('c.code', '=', code),
+            ),
+          ]),
+        ]
+      : []),
     eb.exists(
       eb
         .selectFrom('pollAudienceRules as r')
@@ -345,6 +397,7 @@ function pollColumns(d: PollDraftInput) {
     showResultsRealtime: d.settings.showResultsRealtime,
     allowAnswerEdit: d.settings.allowAnswerEdit,
     listedPublicly: d.settings.listedPublicly,
+    identifySender: d.settings.identifySender,
   };
 }
 
@@ -368,6 +421,17 @@ async function writeContent(
       });
     if (rules.length > 0) {
       await tx.insertInto('pollAudienceRules').values(rules).execute();
+    }
+  }
+
+  if (draft.audience.type === 'codes' && draft.audience.codes.length > 0) {
+    const codes = draft.audience.codes.map((code) => ({ pollId, code }));
+    // Stay well under Postgres' 65k bind parameters per statement.
+    for (let i = 0; i < codes.length; i += 1000) {
+      await tx
+        .insertInto('pollAudienceCodes')
+        .values(codes.slice(i, i + 1000))
+        .execute();
     }
   }
 

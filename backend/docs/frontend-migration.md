@@ -176,7 +176,7 @@ backend ตั้ง `CUNEX_MODE=mock` ไว้ มีบัญชีทดล�
 | `closedEarly`, `closeReason` | `closedEarly`, `closeReason` (ชื่อเดิม) |
 | รูปปก (ยังไม่ได้บันทึก) | `coverImageUrl` |
 | `allowRepeat` | ไม่มีตรงตัว ดู [ข้อ 7](#7-ยังไม่มีใน-backend) |
-| `identifySender` | **ไม่มี** ดู [ข้อ 7](#7-ยังไม่มีใน-backend) |
+| `identifySender` | `settings.identifySender` (โพลสาธารณะใช้ไม่ได้) · ดูคำตอบรายคนที่ `GET /results/responses` และ `.csv` |
 | — | `settings.allowAnswerEdit` = ผู้ตอบแก้คำตอบตัวเองได้จนปิดโหวต |
 
 ### ประเภทคำถาม / องค์ประกอบ (`FormItem` → `elements[]`)
@@ -250,7 +250,7 @@ backend ตั้ง `CUNEX_MODE=mock` ไว้ มีบัญชีทดล�
 |---|---|
 | บันทึกฉบับร่าง (ครั้งแรก) | `POST /polls` body = PollDraft → `201` ได้ `id` กับ `version` |
 | บันทึกฉบับร่าง (ครั้งต่อไป) | `PUT /polls/:id` + header `If-Match: <version>` body = PollDraft ทั้งก้อน |
-| ส่งขออนุมัติ | บันทึกก่อน (POST/PUT) แล้ว `POST /polls/:id/submit` |
+| ส่งขออนุมัติ / ส่งโพล | บันทึกก่อน (POST/PUT) แล้ว `POST /polls/:id/submit` · ทั้งจุฬาฯ ได้ `pending_review` ขอบเขตอื่นได้ `approved` |
 | ลบร่าง | `DELETE /polls/:id` |
 | โหลดร่างมาแก้ | `GET /polls/:id` |
 | อัปโหลดรูป | ดู [ข้อ 5](#5-อัปโหลดรูป) |
@@ -551,12 +551,13 @@ resultDisplay.published  และ  ( ปิดโหวตแล้ว  หร�
 
 | ฟีเจอร์ใน frontend | สถานะ | ระหว่างนี้ |
 |---|---|---|
-| ระบุคนส่ง (`identifySender`) + export แบบมีรหัสผู้ตอบ | ไม่มี: backend ไม่เก็บว่าใครตอบอะไร (แม้แต่แอดมินก็ดูไม่ได้) | ซ่อนสวิตช์ |
+| ระบุคนส่ง (`identifySender`) + export แบบมีรหัสผู้ตอบ | **มีแล้ว**: `settings.identifySender` + `GET /results/responses(.csv)` เฉพาะโพลที่เปิดไว้ | - |
 | ลงคะแนนซ้ำ (`allowRepeat` = ส่งหลายครั้ง นับหลายเสียง) | ไม่มี: หนึ่งคนหนึ่งคำตอบ มีแค่ `allowAnswerEdit` (แก้คำตอบเดิม) | เปลี่ยนสวิตช์เป็น "แก้คำตอบได้" → `settings.allowAnswerEdit` |
 | บันทึกคำตอบที่ยังไม่เสร็จที่ server (`PUT /my-response`) | ไม่มี | เก็บใน `localStorage` ของเครื่องแทน |
-| ขอบเขต D "กำหนดจากรหัส" + preset รหัส (`/presets`) | ยังไม่มี | ซ่อนตัวเลือก D และหน้า presets |
+| ขอบเขต D "กำหนดจากรหัส" | **มีแล้ว**: `audience: { type: "codes", codes }` | - |
+| preset รหัส (`/presets`) | ยังไม่มี | เก็บใน `localStorage` ของเครื่อง (`presetStore`) |
 | เลือกสาขา | ไม่มีข้อมูลจาก CUNEX | เปลี่ยนเป็นคณะ + ปีเข้า |
-| คำตอบรายชุด (`/responses`) และส่งออก CSV (`/export`) | ยังไม่มี | ซ่อนแท็บ "คำตอบรายชุด" และปุ่มส่งออก |
+| คำตอบรายชุด (`/responses`) และส่งออก CSV (`/export`) | มีเฉพาะโพลที่ระบุคนส่ง (ข้างบน) โพลอื่นยังนิรนาม | ซ่อนสำหรับโพลอื่น |
 
 ถ้ามีฟีเจอร์ไหนจำเป็นต้องใช้จริง คุยกับฝั่ง backend ก่อน จะได้หาทางที่ไม่ทำให้ระบุตัวผู้ตอบได้
 

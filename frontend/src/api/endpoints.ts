@@ -1,8 +1,5 @@
 import type { RequestOptions, Requester } from './client'
-import type {
-    AdminUser, AuditLog, Ballot, Faculty, ImageMime, Me, Page, PollDetail, PollDraft,
-    PollPreview, PollResults, PollStatus, PollSummary, ResultDisplay, TextAnswerPage, UploadTicket, Uuid,
-} from './types'
+import type { AdminUser, AuditLog, Ballot, Faculty, ImageMime, Me, Page, PollDetail, PollDraft, PollPreview, PollResults, PollStatus, PollSummary, RespondentPage, ResultDisplay, TextAnswerPage, UploadTicket, Uuid } from './types'
 
 // ทุก endpoint ในสัญญา api-endpoints v1 · หนึ่งฟังก์ชันต่อหนึ่ง endpoint ชื่อ/ลำดับหัวข้อตามเอกสาร
 export function makeApi(req: Requester) {
@@ -54,6 +51,9 @@ export function makeApi(req: Requester) {
                 req<PollResults>(`${poll(id)}/results`, { query: { breakdown: breakdown === 'none' ? null : breakdown }, ...signal(s) }),
             textAnswers: (id: Uuid, elementId: Uuid, cursor?: string | null, limit = 20) =>
                 req<TextAnswerPage>(`${poll(id)}/results/text`, { query: { elementId, cursor, limit } }),
+            // ระบุคนส่ง: รหัสผู้ตอบคู่กับคำตอบ เฉพาะเจ้าของ/แอดมิน (ไฟล์ CSV ใช้ downloadUrls.responsesCsv)
+            responses: (id: Uuid, cursor?: string | null, limit = 50) =>
+                req<RespondentPage>(`${poll(id)}/results/responses`, { query: { cursor, limit } }),
         },
 
         // §5 Images

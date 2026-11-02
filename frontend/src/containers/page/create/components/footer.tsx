@@ -9,6 +9,8 @@ import type { CreateStep } from '@/store/createStepStore'
 import { SubmitDialog } from './submitDialog'
 import { DeleteDraftDialog } from './deleteDraftDialog'
 import { resetCreateForm, saveDraft, submitDraft } from '../draftActions'
+import { useCreatePollStore } from '@/store/createPollStore'
+import { needsReview } from '@/lib/pollLabels'
 
 // draftId = กำลังแก้ฉบับร่างที่บันทึกไว้แล้ว (ลบได้) · บันทึก/ส่งจะเขียนทับฉบับร่างเดิม ไม่สร้างโพลซ้ำ
 export function CreateFooter({ step, onStepChange, draftId }: {
@@ -23,6 +25,8 @@ export function CreateFooter({ step, onStepChange, draftId }: {
     const [draftSaving, setDraftSaving] = useState(false)
     const [draftError, setDraftError] = useState<string | null>(null)
     const [deleteOpen, setDeleteOpen] = useState(false)
+    // เฉพาะโพลทั้งจุฬาฯ ที่ต้องรออนุมัติ
+    const review = useCreatePollStore((s) => needsReview(s.audienceType))
 
     const handleSubmit = async () => {
         setPending(true)
@@ -36,7 +40,7 @@ export function CreateFooter({ step, onStepChange, draftId }: {
         // ส่งสำเร็จแล้วร่างในเครื่องไม่มีประโยชน์ จึงล้างทั้งข้อมูลโพลและคำถาม
         resetCreateForm()
         setSubmitOpen(false)
-        toast.success('ส่งขออนุมัติแล้ว')
+        toast.success(result.poll.status === 'pending_review' ? 'ส่งขออนุมัติแล้ว' : 'ส่งโพลแล้ว กดเปิดโหวตได้เลย')
         router.push(`/dashboard/${result.poll.id}`)
     }
 
@@ -110,7 +114,7 @@ export function CreateFooter({ step, onStepChange, draftId }: {
                     </Button>
                     <Button type='button' className={`grow`} onClick={() => { setError(null); setSubmitOpen(true) }}>
                         <Send/>
-                        <span className='font-heading text-lg font-bold'>ส่งขออนุมัติ</span>
+                        <span className='font-heading text-lg font-bold'>{review ? 'ส่งขออนุมัติ' : 'ส่งโพล'}</span>
                     </Button>
                     <Button aria-label='ดูตัวอย่าง' className={" aspect-square bg-yellow-500 "} onClick={openPreview}><Eye/></Button>
                     <SubmitDialog
@@ -120,6 +124,7 @@ export function CreateFooter({ step, onStepChange, draftId }: {
                         onSubmit={handleSubmit}
                         pending={pending}
                         error={error}
+                        review={review}
                     />
                 </div>
             )}

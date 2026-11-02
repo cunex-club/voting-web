@@ -24,13 +24,18 @@ export const AUDIENCE_LABEL: Record<AudienceType, string> = {
     chula: 'ทั้งจุฬาฯ',
     restricted: 'เฉพาะคณะ/ปีเข้า',
     public: 'สาธารณะ',
+    codes: 'ระบุรหัส',
 }
 
 export const AUDIENCE_DESCRIPTION: Record<AudienceType, string> = {
     chula: 'นิสิตและบุคลากรจุฬาฯ ที่ยืนยันตัวตนผ่าน CUNEX',
     restricted: 'เฉพาะคณะและปีเข้าที่เลือก ต้องยืนยันตัวตนผ่าน CUNEX',
     public: 'ทุกคนที่เข้าสู่ระบบ',
+    codes: 'เฉพาะรหัสนิสิต/บุคลากรที่กำหนด',
 }
+
+// เฉพาะโพลทั้งจุฬาฯ ที่ต้องรอผู้ดูแลอนุมัติ (backend: needsReview) ขอบเขตอื่นส่งแล้วพร้อมเปิดโหวตเลย
+export const needsReview = (audience: AudienceType) => audience === 'chula'
 
 // ใช้ timeZone คงที่ เพื่อให้ server กับ client แสดงเวลาเหมือนกันตอน hydrate
 const closeFormatter = new Intl.DateTimeFormat('th-TH', {

@@ -108,7 +108,9 @@ const description = z.object({
       .array(
         z.object({
           heading: optional(text(200)),
-          body: text(5000).nullish().transform((v) => v ?? ''),
+          body: text(5000)
+            .nullish()
+            .transform((v) => v ?? ''),
         }),
       )
       .min(1)
@@ -169,8 +171,11 @@ export const QUESTION_TYPES = new Set<ElementType>([
   'dropdown',
 ]);
 
+export const MAX_AUDIENCE_CODES = 5000;
+
 // public = anyone logged in · chula = any CUNEX-verified user
 // restricted = CUNEX-verified users matching a faculty/entry-year rule
+// codes = CUNEX-verified users whose student id (10 digits) or staff id (8) is listed
 const audienceSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('public') }),
   z.object({ type: z.literal('chula') }),
@@ -193,28 +198,54 @@ const audienceSchema = z.discriminatedUnion('type', [
       // Empty is fine while drafting; submit requires at least one.
       .max(100),
   }),
+  z.object({
+    type: z.literal('codes'),
+    codes: z
+      .array(
+        z
+          .string()
+          .trim()
+          .regex(
+            /^(\d{8}|\d{10})$/,
+            'รหัสต้องเป็นตัวเลข 8 หลัก (บุคลากร) หรือ 10 หลัก (นิสิต)',
+          ),
+      )
+      .max(MAX_AUDIENCE_CODES)
+      // Same id twice means the same thing.
+      .transform((codes) => [...new Set(codes)])
+      .default([]),
+  }),
 ]);
 
-export const pollDraftSchema = z.object({
-  title: text(200).default(''),
-  description: text(5000).default(''),
-  coverImageUrl: imageUrl.nullish(),
-  // null = voting starts as soon as the owner publishes
-  opensAt: z.iso.datetime({ offset: true }).nullish(),
-  closesAt: z.iso.datetime({ offset: true }).nullish(),
-  audience: audienceSchema.default({ type: 'public' }),
-  settings: z
-    .object({
-      showResultsRealtime: z.boolean().default(false),
-      allowAnswerEdit: z.boolean().default(false),
-      listedPublicly: z.boolean().default(false),
-    })
-    .default({
-      showResultsRealtime: false,
-      allowAnswerEdit: false,
-      listedPublicly: false,
-    }),
-  elements: z.array(elementSchema).max(200).default([]),
-});
+export const pollDraftSchema = z
+  .object({
+    title: text(200).default(''),
+    description: text(5000).default(''),
+    coverImageUrl: imageUrl.nullish(),
+    // null = voting starts as soon as the owner publishes
+    opensAt: z.iso.datetime({ offset: true }).nullish(),
+    closesAt: z.iso.datetime({ offset: true }).nullish(),
+    audience: audienceSchema.default({ type: 'public' }),
+    settings: z
+      .object({
+        showResultsRealtime: z.boolean().default(false),
+        allowAnswerEdit: z.boolean().default(false),
+        listedPublicly: z.boolean().default(false),
+        // The owner sees each respondent's student/staff id with their answers.
+        identifySender: z.boolean().default(false),
+      })
+      .default({
+        showResultsRealtime: false,
+        allowAnswerEdit: false,
+        listedPublicly: false,
+        identifySender: false,
+      }),
+    elements: z.array(elementSchema).max(200).default([]),
+  })
+  // Anyone logged in may answer a public poll, and they may have no id at all.
+  .refine((d) => !(d.audience.type === 'public' && d.settings.identifySender), {
+    message: 'โพลสาธารณะระบุคนส่งไม่ได้',
+    path: ['settings', 'identifySender'],
+  });
 
 export type PollDraftInput = z.infer<typeof pollDraftSchema>;

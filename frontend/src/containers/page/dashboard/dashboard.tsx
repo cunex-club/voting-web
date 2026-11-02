@@ -10,6 +10,7 @@ import { PollStatusTags } from '@/containers/page/dashboard/components/pollStatu
 import { PollMetaInfo } from '@/containers/page/dashboard/components/pollMetaInfo'
 import { PollActions } from '@/containers/page/dashboard/components/pollActions'
 import { ResultsSection } from '@/containers/page/dashboard/components/resultsSection'
+import { RespondentsSection } from '@/containers/page/dashboard/components/respondentsSection'
 import { QuestionPreview } from '@/containers/page/dashboard/components/questionPreview'
 import { PublishAction } from '@/containers/page/dashboard/components/publishAction'
 import { TakedownAction } from '@/containers/page/dashboard/components/takedownAction'
@@ -81,6 +82,9 @@ export async function PollDashboardPage({ slug, view = 'owner' }: { slug: string
                         </p>
                     )}
                     <ResultsSection results={toResultsModel(poll, results)} />
+                    {poll.settings.identifySender && (
+                        <RespondentsSection pollId={poll.id} elements={poll.elements} total={results.totalBallots ?? 0} />
+                    )}
                 </>
             ) : (
                 <>

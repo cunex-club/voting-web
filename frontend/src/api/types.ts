@@ -56,6 +56,9 @@ export type Audience =
     | { type: 'public' }
     | { type: 'chula' }
     | { type: 'restricted'; rules: AudienceRule[] }
+    // ระบุรหัส: codes = รหัสนิสิต (10 หลัก) / บุคลากร (8 หลัก) ส่งตอนบันทึก · ได้กลับมาเฉพาะเจ้าของ/แอดมิน
+    // codeCount = จำนวนรหัสในรายการ (ผู้ตอบเห็นแค่ตัวเลขนี้)
+    | { type: 'codes'; codes?: string[]; codeCount?: number }
 
 export type AudienceType = Audience['type']
 
@@ -63,6 +66,8 @@ export type PollSettings = {
     showResultsRealtime: boolean
     allowAnswerEdit: boolean
     listedPublicly: boolean
+    // ระบุคนส่ง: เจ้าของ/แอดมินเห็นรหัสผู้ตอบคู่กับคำตอบ · โพลสาธารณะใช้ไม่ได้ · ล็อกหลังส่งโพล
+    identifySender: boolean
 }
 
 export type ResultView = 'list' | 'pie' | 'bar'
@@ -160,6 +165,7 @@ export type PollPreview = {
     closedEarly: boolean
     closeReason: string | null
     audience: Audience
+    identifySender: boolean
     questionCount: number
 }
 
@@ -176,6 +182,7 @@ export type PollSummary = {
     closedAt: IsoDateTime | null
     closedEarly: boolean
     showResultsRealtime: boolean
+    identifySender: boolean
     questionCount: number
     createdAt: IsoDateTime
     // เฉพาะหน้ารวมโพล (GET /polls)
@@ -228,6 +235,10 @@ export type PollResults = {
 
 // ไม่มีเวลาส่งหรือ id กำกับ ตั้งใจไม่ให้โยงกับคำตอบข้ออื่นของคนเดียวกันได้
 export type TextAnswerPage = Page<{ text: string }>
+
+// ระบุคนส่ง (GET /results/responses): หนึ่งแถวต่อผู้ตอบ · code null = บัญชีที่ไม่มีรหัสนิสิต/บุคลากร
+export type Respondent = { code: string | null; submittedAt: IsoDateTime; answers: Answer[] }
+export type RespondentPage = Page<Respondent>
 
 // ฉบับร่างคำตอบที่ยังไม่ส่ง เก็บในเบราว์เซอร์เท่านั้น (src/lib/voteDraft.ts)
 export type BallotDraft = { answers: Answer[]; savedAt: IsoDateTime }

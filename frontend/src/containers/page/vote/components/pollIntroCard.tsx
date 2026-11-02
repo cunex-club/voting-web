@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Ban, CheckCircle2, List, Loader2, LogIn, Timer } from 'lucide-react'
+import { Ban, CheckCircle2, IdCard, List, Loader2, LogIn, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { api, authUrls, errorMessage } from '@/api'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -159,6 +159,17 @@ export function PollIntroCard({ poll, reason, onStart }: {
                     <div className='flex flex-col'>
                         <span className='font-bold'>เจ้าของโพลปิดรับคำตอบก่อนกำหนด</span>
                         {poll.closeReason && <span className='text-ink-500 break-words'>เหตุผล: {poll.closeReason}</span>}
+                    </div>
+                </div>
+            )}
+
+            {/* ระบุคนส่ง: บอกก่อนเริ่มตอบเสมอ (รวมตอนยังไม่ login) ผู้ตอบจะได้เลือกได้ว่าจะตอบหรือไม่ */}
+            {poll.identifySender && (
+                <div role='note' className='flex gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2'>
+                    <IdCard className='mt-0.5 size-4 shrink-0 text-primary' />
+                    <div className='flex flex-col'>
+                        <span className='font-bold'>โพลนี้ระบุคนส่ง</span>
+                        <span className='text-ink-500'>เจ้าของโพลจะเห็นรหัสนิสิต/บุคลากรของคุณคู่กับคำตอบ</span>
                     </div>
                 </div>
             )}

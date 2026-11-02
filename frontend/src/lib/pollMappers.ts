@@ -1,6 +1,7 @@
 import type { Audience, Element, ElementOption, PollDetail, PollDraft } from '@/api/types'
 import type { ElementItem, FormItem, InputItem, Option } from '@/store/elementStore'
 import type { CreatePollState } from '@/store/createPollStore'
+import { parseCodes, type CodeKind } from '@/lib/codes'
 
 // ตัวแปลงระหว่างโมเดลของหน้าสร้างโพล/หน้ากรอก (FormItem) กับ Element ของ API
 // หน้าเว็บทำงานกับ FormItem ทั้งหมด แปลงที่ขอบตอนส่ง/รับจาก API ที่เดียว
@@ -89,10 +90,16 @@ export function elementToItem(e: Element, index: number): FormItem {
     }
 }
 
-export function audienceOfForm(form: Pick<CreatePollState, 'audienceType' | 'rules'>): Audience {
+// ระบุรหัส: ส่งทุกบรรทัดที่ไม่ว่าง backend ตรวจรูปแบบเอง (รหัสผิดรูปแบบ = บันทึกไม่ผ่าน พร้อมบอกว่ารหัสไหน)
+export function audienceOfForm(form: Pick<CreatePollState, 'audienceType' | 'rules' | 'codesText'>): Audience {
     if (form.audienceType === 'restricted') return { type: 'restricted', rules: form.rules }
+    if (form.audienceType === 'codes') return { type: 'codes', codes: parseCodes(form.codesText) }
     return { type: form.audienceType }
 }
+
+// ประเภทรหัสไม่ได้เก็บที่ backend ดูจากความยาวรหัสส่วนใหญ่แทน (บุคลากร 8 หลัก นิสิต 10 หลัก)
+const codeKindOf = (codes: string[]): CodeKind =>
+    codes.filter((c) => c.length === 8).length > codes.length / 2 ? 'STAFF' : 'STUDENT'
 
 // ค่าฟอร์มหน้าสร้างโพล → body ของ POST/PUT /polls
 export function formToDraft(form: CreatePollState, items: FormItem[]): PollDraft {
@@ -107,6 +114,8 @@ export function formToDraft(form: CreatePollState, items: FormItem[]): PollDraft
             showResultsRealtime: form.realtime,
             allowAnswerEdit: form.allowAnswerEdit,
             listedPublicly: form.listedPublicly,
+            // โพลสาธารณะระบุคนส่งไม่ได้ (backend ตีกลับ) สวิตช์ในฟอร์มอาจค้างค่าไว้จากตอนเลือกขอบเขตอื่น
+            identifySender: form.audienceType !== 'public' && form.identifySender,
         },
         elements: items.map(itemToElement),
     }
@@ -123,9 +132,12 @@ export function detailToForm(poll: PollDetail): { form: CreatePollState; items: 
             coverImageUrl: poll.coverImageUrl,
             audienceType: poll.audience.type,
             rules: poll.audience.type === 'restricted' ? poll.audience.rules : [],
+            codeKind: codeKindOf(poll.audience.type === 'codes' ? poll.audience.codes ?? [] : []),
+            codesText: poll.audience.type === 'codes' ? (poll.audience.codes ?? []).join('\n') : '',
             realtime: poll.settings.showResultsRealtime,
             allowAnswerEdit: poll.settings.allowAnswerEdit,
             listedPublicly: poll.settings.listedPublicly,
+            identifySender: poll.settings.identifySender,
         },
         items: poll.elements.map(elementToItem),
     }

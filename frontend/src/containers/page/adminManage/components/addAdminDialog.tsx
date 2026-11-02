@@ -56,7 +56,7 @@ export function AddAdminDialog() {
 
     return (
         <>
-            <Button className='fixed bottom-4 right-4 font-heading text-lg font-bold px-4' onClick={() => setOpen(true)}>
+            <Button className='fixed bottom-4 right-20 h-14 shadow-md font-heading text-lg font-bold px-4' onClick={() => setOpen(true)}>
                 <UserPlus className='size-5' />
                 เพิ่ม admin
             </Button>

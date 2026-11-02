@@ -142,6 +142,7 @@ export function VoteStep({ poll, pageIndex }: { poll: VoterPoll; pageIndex: numb
                 onOpenChange={setConfirmOpen}
                 pollTitle={poll.title}
                 editing={poll.submitted}
+                identified={poll.identifySender}
                 pending={submitting}
                 onConfirm={submit}
             />

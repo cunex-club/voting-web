@@ -2,7 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppError } from '../../common/errors.js';
 import type { Env } from '../../config/env.js';
-import { isEligible } from '../polls/eligibility.js';
+import { isEligible, respondentCode } from '../polls/eligibility.js';
 import {
   canSeePoll,
   isAcceptingVotes,
@@ -37,12 +37,12 @@ export class BallotsService {
   }
 
   async submit(user: User, pollId: string, body: BallotBody) {
-    const agg = await this.polls.find(pollId);
+    const agg = await this.polls.find(pollId, user);
     if (!agg || !canSeePoll(agg, user)) throw pollNotFound();
     const { poll } = agg;
 
     // Owner and admins can see any poll but only vote where eligible.
-    if (!isEligible(poll.audience, agg.rules, user)) {
+    if (!isEligible(poll.audience, agg.rules, user, agg.listed)) {
       throw new AppError(
         'NOT_ELIGIBLE',
         HttpStatus.FORBIDDEN,
@@ -69,6 +69,8 @@ export class BallotsService {
       // Snapshot at vote time for faculty/year breakdowns.
       facultyCode: user.isChulaVerified ? user.facultyCode : null,
       studentYear: user.isChulaVerified ? user.studentYear : null,
+      // Only polls that told voters up front ("ระบุคนส่ง") keep who answered.
+      respondentCode: poll.identifySender ? respondentCode(user) : null,
       ballot,
     });
     if (result.kind === 'closed') throw pollClosed();
@@ -86,7 +88,7 @@ export class BallotsService {
   }
 
   async mine(user: User, pollId: string) {
-    const agg = await this.polls.find(pollId);
+    const agg = await this.polls.find(pollId, user);
     if (!agg || !canSeePoll(agg, user)) throw pollNotFound();
     const found = await this.ballots.find(
       pollId,

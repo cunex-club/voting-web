@@ -14,6 +14,7 @@ export const MOCK_CUNEX_USERS = {
   'eng-2567': {
     userId: '100000000000000001',
     studentId: '6730000121',
+    staffId: null,
     facultyCode: '21',
     facultyNameTh: 'คณะวิศวกรรมศาสตร์',
     facultyNameEn: 'Faculty of Engineering',
@@ -22,6 +23,7 @@ export const MOCK_CUNEX_USERS = {
   'med-2566': {
     userId: '100000000000000002',
     studentId: '6630000230',
+    staffId: null,
     facultyCode: '30',
     facultyNameTh: 'คณะแพทยศาสตร์',
     facultyNameEn: 'Faculty of Medicine',
@@ -30,6 +32,7 @@ export const MOCK_CUNEX_USERS = {
   'arts-2565': {
     userId: '100000000000000003',
     studentId: '6530000322',
+    staffId: null,
     facultyCode: '22',
     facultyNameTh: 'คณะอักษรศาสตร์',
     facultyNameEn: 'Faculty of Arts',
@@ -38,10 +41,20 @@ export const MOCK_CUNEX_USERS = {
   admin: {
     userId: '100000000000000099',
     studentId: '6430000923',
+    staffId: null,
     facultyCode: '23',
     facultyNameTh: 'คณะวิทยาศาสตร์',
     facultyNameEn: 'Faculty of Science',
     studentYear: 2564,
+  },
+  staff: {
+    userId: '100000000000000050',
+    studentId: null,
+    staffId: '10000050',
+    facultyCode: '21',
+    facultyNameTh: 'คณะวิศวกรรมศาสตร์',
+    facultyNameEn: 'Faculty of Engineering',
+    studentYear: null,
   },
 } satisfies Record<string, CunexProfile>;
 

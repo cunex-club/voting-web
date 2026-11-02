@@ -53,9 +53,12 @@ Lifecycle (`status`):
 
 ```
 draft ──submit──► pending_review ──approve (admin)──► approved ──publish (owner)──► open ──► closed
-  ▲                     │                                            (at closesAt, or closed early)
-  └──── rejected ◄──────┘  (editable, can be resubmitted)
+  │ ▲                   │                                ▲           (at closesAt, or closed early)
+  │ └── rejected ◄──────┘  (editable, can be resubmitted)│
+  └──submit (audience public / restricted / codes)───────┘
 ```
+
+Only `audience.type = "chula"` goes through admin review. `public`, `restricted` and `codes` polls go from `submit` straight to `approved`.
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
@@ -86,11 +89,20 @@ draft ──submit──► pending_review ──approve (admin)──► approv
 
 Lists return `{ items: PollSummary[], nextCursor }`. `PollSummary` = `id, status, title,
 description, coverImageUrl, audience` (the type only: `"public" | "chula" | "restricted"`),
-`opensAt, closesAt, openedAt, closedAt, closedEarly, showResultsRealtime, questionCount, createdAt`;
+`opensAt, closesAt, openedAt, closedAt, closedEarly, showResultsRealtime, identifySender, questionCount, createdAt`;
 the feed adds `myBallot`.
 
 Audiences: `public` = anyone logged in · `chula` = any CUNEX-verified user ·
-`restricted` = CUNEX-verified users matching a faculty / entry-year rule.
+`restricted` = CUNEX-verified users matching a faculty / entry-year rule ·
+`codes` ("ระบุรหัส") = CUNEX-verified users whose student id (10 digits) or staff id (8 digits, CUNEX `refId`
+for non-students) is on the poll's list. Only the owner and admins get the list back (`audience.codes`);
+everyone else sees `{ "type": "codes", "codeCount": n }`. Opening a codes poll notifies the listed ids.
+
+**Identify sender** (`settings.identifySender`, "ระบุคนส่ง"): ballots keep the voter's student/staff id
+(`ballots.respondent_code`) so the owner can see who answered what (§7). Every other poll stays anonymous.
+Not allowed on `public` polls; locked with the rest of the draft at submit, so voters who answered
+anonymously can never be identified later. `GET /polls/:id`, `/preview` and list items carry the flag so
+the web app tells voters before they start.
 
 ## 4. Polls — authoring (owner)
 
@@ -99,7 +111,7 @@ Audiences: `public` = anyone logged in · `chula` = any CUNEX-verified user ·
 | POST | `/polls` | user | Create a draft. Body = `PollDraft` (all fields optional). → `201 PollDetail` |
 | PUT | `/polls/:pollId` | owner | Replace the whole draft (settings + audience + ordered elements + options) in one transaction. Only in `draft`/`rejected`. Needs `If-Match: <version>` (`428` if missing, `412 VERSION_CONFLICT` + `currentVersion` if stale). → `200 PollDetail` |
 | DELETE | `/polls/:pollId` | owner | Soft delete. Only `draft`/`rejected`. → `204` |
-| POST | `/polls/:pollId/submit` | owner | Validate completeness → `pending_review`. `422 POLL_INCOMPLETE` with `problems: [{ path, message }]` listing every problem. |
+| POST | `/polls/:pollId/submit` | owner | Validate completeness → `pending_review` (audience `chula`) or `approved` (`public` / `restricted`, no admin review). `422 POLL_INCOMPLETE` with `problems: [{ path, message }]` listing every problem. |
 | PATCH | `/polls/:pollId/closes-at` | owner | `{ closesAt }` in `pending_review`, `approved` or `open`. Must be in the future and after `opensAt`. |
 | PATCH | `/polls/:pollId/realtime` | owner | `{ showResultsRealtime }`. Only before voting starts (`pending_review`, `approved`). |
 | GET | `/polls/:pollId/preview` | **public** | Intro card of a published (`open`/`closed`) poll for a shared link opened without logging in: title, description, cover, times, audience, `questionCount`. No questions, results or viewer data. `404` for unpublished, taken-down or missing polls. `GET /faculties` is public too. |
@@ -122,8 +134,9 @@ Notes:
 { "title": "…", "description": "…", "coverImageUrl": "https://…/images/<uuid>.png",
   "opensAt": null,   // optional scheduled opening; null = opens on publish. Submit requires opensAt < closesAt
   "closesAt": "…",
-  "audience": { "type": "public" } | { "type": "chula" } | { "type": "restricted", "rules": [{ "facultyCode": "21", "studentYear": 2567 }] },
-  "settings": { "showResultsRealtime": false, "allowAnswerEdit": true, "listedPublicly": true },
+  "audience": { "type": "public" } | { "type": "chula" } | { "type": "restricted", "rules": [{ "facultyCode": "21", "studentYear": 2567 }] }
+            | { "type": "codes", "codes": ["6630000230", "10000050"] },   // ≤ 5000, duplicates dropped; submit needs ≥ 1
+  "settings": { "showResultsRealtime": false, "allowAnswerEdit": true, "listedPublicly": true, "identifySender": false },
   "elements": [
     { "type": "single_choice", "title": "อยากให้ธีมงานปีนี้เป็นแบบไหน", "isRequired": true,
       "config": { "layout": "list" },
@@ -207,6 +220,8 @@ Omitted or empty answers count as unanswered. The poll row is locked while a bal
 |---|---|---|---|
 | GET | `/polls/:pollId/results?breakdown=none\|faculty\|year` | owner, admin, or voter when allowed* | Counts per option + total ballots. 3 s Redis cache (one DB query per poll per replica at a time), `ETag` → `304`. `403 RESULTS_HIDDEN` when not allowed. `breakdown` is owner/admin only. |
 | GET | `/polls/:pollId/results/text?elementId=&cursor=&limit=` | owner, admin | Free-text answers for one question, as `{ text }` only: no ballot id, no time, order unrelated to submit time. |
+| GET | `/polls/:pollId/results/responses?cursor=&limit=` | owner, admin | Identify-sender polls only: `{ items: [{ code, submittedAt, answers }], nextCursor }`, oldest first. `code` is null for accounts without a student/staff id. `409 SENDER_NOT_IDENTIFIED` for other polls. |
+| GET | `/polls/:pollId/results/responses.csv` | owner, admin | The same as a CSV download (UTF-8 with BOM for Excel): `รหัส, เวลาที่ส่ง`, then one column per question; choices by label, joined with ` \| `. Cells starting with `= + - @` are prefixed with `'`. |
 
 \* Voters only while `resultDisplay.published` is true, and then: once voting has ended, or
 live when `showResultsRealtime=true` **and they have already answered** (so early results

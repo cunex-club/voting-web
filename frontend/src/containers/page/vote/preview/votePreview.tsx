@@ -53,6 +53,7 @@ export function VotePreview() {
         audienceScope: audienceScope(audience, faculties),
         realtime: form.realtime,
         allowAnswerEdit: form.allowAnswerEdit,
+        identifySender: form.audienceType !== 'public' && form.identifySender,
         items,
         questionCount: questions.length,
         resultsPublished: true,
@@ -102,7 +103,7 @@ export function VotePreview() {
             {page === null ? (
                 <>
                     <PollIntroCard poll={poll} reason={null} onStart={() => goTo(0)} />
-                    <AnonymityNote className='mt-4' />
+                    <AnonymityNote className='mt-4' identified={poll.identifySender} />
                 </>
             ) : (
                 <div className='flex flex-1 flex-col'>

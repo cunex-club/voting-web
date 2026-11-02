@@ -79,6 +79,7 @@ export class UsersRepository {
       const fields = {
         isChulaVerified: true,
         studentId: profile.studentId,
+        staffId: profile.staffId,
         facultyCode: profile.facultyCode,
         studentYear: profile.studentYear,
         lastLoginAt: new Date(),

@@ -6,7 +6,7 @@ import { ViewToggleBar } from './viewToggleBar'
 import { QuestionCard } from './questionCard'
 
 // ส่วนผลโหวตในหน้ารายละเอียด: สรุปผลทุกข้อ มุมมองที่เลือกใช้กับทุกข้อพร้อมกัน (ข้อความไม่สนมุมมอง)
-// ไม่มีคำตอบรายชุดและไฟล์ส่งออก: backend ไม่ให้โยงคำตอบหลายข้อของคนเดียวกันเข้าด้วยกัน
+// คำตอบรายคนและไฟล์ส่งออกมีเฉพาะโพลที่ระบุคนส่ง (RespondentsSection) โพลอื่นโยงคำตอบของคนเดียวกันไม่ได้
 export function ResultsSection({ results }: { results: ResultsModel }) {
     const [views, setViews] = useState<ResultView[]>(['list'])
     return (

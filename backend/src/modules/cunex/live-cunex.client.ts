@@ -22,6 +22,7 @@ export interface LiveCunexConfig {
 const loose = <T extends z.ZodType>(schema: T) => schema.nullish().catch(null);
 const profileSchema = z.object({
   userId: z.string().min(1),
+  userType: loose(z.string()),
   refId: loose(z.string()),
   studentId: loose(z.string()),
   facultyCode: loose(z.string().regex(/^\d{2}$/)),
@@ -85,10 +86,14 @@ export class LiveCunexClient extends CunexClient {
       throw unavailable();
     }
     const p = parsed.data;
-    const studentId = p.refId ?? p.studentId ?? null;
+    const refId = p.refId ?? p.studentId ?? null;
+    // refId is the student id (10 digits) for students and, we expect, the
+    // staff id (8 digits) for staff. Anything else is not used for matching.
+    const isStudent = !p.userType || /^stu/i.test(p.userType);
     return {
       userId: p.userId,
-      studentId: studentId && /^\d{10}$/.test(studentId) ? studentId : null,
+      studentId: refId && /^\d{10}$/.test(refId) ? refId : null,
+      staffId: !isStudent && refId && /^\d{8}$/.test(refId) ? refId : null,
       facultyCode: p.facultyCode ?? null,
       facultyNameTh: p.facultyNameTH ?? '',
       facultyNameEn: p.facultyNameEN ?? '',

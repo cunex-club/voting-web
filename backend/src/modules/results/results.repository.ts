@@ -89,6 +89,48 @@ export class ResultsRepository {
   }
 
   /**
+   * Identify-sender polls: each ballot with the respondent's id and answers,
+   * oldest first. `after` is the last ballot of the previous page.
+   */
+  async responses(
+    pollId: string,
+    after: { t: Date; id: string } | undefined,
+    limit: number,
+  ) {
+    let q = this.db
+      .selectFrom('ballots')
+      .select(['id', 'respondentCode', 'submittedAt'])
+      .where('pollId', '=', pollId)
+      .orderBy('submittedAt')
+      .orderBy('id')
+      .limit(limit + 1);
+    if (after) {
+      q = q.where((eb) =>
+        eb(eb.refTuple('submittedAt', 'id'), '>', eb.tuple(after.t, after.id)),
+      );
+    }
+    const rows = await q.execute();
+    const ballots = rows.slice(0, limit);
+    const ids = ballots.map((b) => b.id);
+    const [choices, texts] =
+      ids.length === 0
+        ? [[], []]
+        : await Promise.all([
+            this.db
+              .selectFrom('ballotChoices')
+              .select(['ballotId', 'elementId', 'optionId'])
+              .where('ballotId', 'in', ids)
+              .execute(),
+            this.db
+              .selectFrom('ballotTextAnswers')
+              .select(['ballotId', 'elementId', 'answer'])
+              .where('ballotId', 'in', ids)
+              .execute(),
+          ]);
+    return { ballots, choices, texts, hasMore: rows.length > limit };
+  }
+
+  /**
    * Free-text answers for one question, ordered by ballot id. Ballot ids are
    * random UUIDs, so the order says nothing about who answered when, and no
    * id or time is returned with the text.
