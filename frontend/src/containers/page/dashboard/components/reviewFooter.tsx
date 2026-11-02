@@ -39,7 +39,7 @@ export function ReviewFooter({ pollId }: { pollId: string }) {
     }
 
     return (
-        <footer className='sticky bottom-0 mt-auto flex gap-2 border-t bg-background py-3'>
+        <footer data-bottom-bar className='sticky bottom-0 mt-auto flex gap-2 border-t bg-background py-3'>
             <Button variant='destructive' className='flex-1' disabled={approving} onClick={() => setRejectOpen(true)}>
                 <X />
                 <span className='font-heading text-base font-bold'>ปฏิเสธ</span>

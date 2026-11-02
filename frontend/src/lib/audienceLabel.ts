@@ -36,6 +36,10 @@ export const groupLabel = (g: AudienceGroup) => {
 
 // ข้อความขอบเขตผู้ตอบแบบบรรทัดเดียว ใช้ที่ที่ใส่ปุ่มไม่ได้
 export function audienceLabel(audience: Audience, faculties: Faculty[]) {
+    if (audience.type === 'codes') {
+        const n = audience.codes?.length ?? audience.codeCount
+        return n ? `${AUDIENCE_DESCRIPTION.codes} (${n.toLocaleString('th-TH')} รหัส)` : AUDIENCE_DESCRIPTION.codes
+    }
     if (audience.type !== 'restricted') return AUDIENCE_DESCRIPTION[audience.type]
     const groups = audienceScope(audience, faculties)?.groups ?? []
     return groups.length > 0 ? groups.map(groupLabel).join(', ') : 'เฉพาะคณะที่กำหนด'

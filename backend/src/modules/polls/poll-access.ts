@@ -1,22 +1,29 @@
+import type { PollAudience } from '../../infra/database/db.js';
 import type { User } from '../users/users.repository.js';
 import { isEligible } from './eligibility.js';
 import type { PollAggregate, PollRow } from './polls.repository.js';
 import { resultDisplayOf } from './result-display.js';
+
+/** Only polls for all of Chula wait for an admin; the rest go straight to approved. */
+export const needsReview = (audience: PollAudience) => audience === 'chula';
 
 const isStaff = (poll: PollRow, user: User) =>
   poll.ownerId === user.id || user.role === 'admin';
 
 /**
  * Owner and admins see every status; everyone else only published polls they
- * may answer, unless an admin took the poll down. Callers answer 404 (not 403) when this is false, so poll ids
- * can't be probed.
+ * may answer, unless an admin took the poll down. Callers answer 404 (not 403)
+ * when this is false, so poll ids can't be probed. `agg` must come from
+ * `find(id, user)` for codes polls to be seen by the people on the list.
  */
 export function canSeePoll(agg: PollAggregate, user: User): boolean {
   if (isStaff(agg.poll, user)) return true;
   // Taken down by an admin: gone for everyone but the owner and admins.
   if (agg.poll.takenDownAt) return false;
   const published = agg.poll.status === 'open' || agg.poll.status === 'closed';
-  return published && isEligible(agg.poll.audience, agg.rules, user);
+  return (
+    published && isEligible(agg.poll.audience, agg.rules, user, agg.listed)
+  );
 }
 
 /**

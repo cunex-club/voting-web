@@ -27,6 +27,9 @@ export function findProblems(draft: PollDraftInput, now: Date): Problem[] {
   ) {
     add('audience.rules', 'ต้องเลือกคณะหรือปีเข้าอย่างน้อย 1 อย่าง');
   }
+  if (draft.audience.type === 'codes' && draft.audience.codes.length === 0) {
+    add('audience.codes', 'ต้องใส่รหัสอย่างน้อย 1 รหัส');
+  }
   if (
     draft.opensAt &&
     draft.closesAt &&

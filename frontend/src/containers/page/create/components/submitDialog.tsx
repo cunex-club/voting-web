@@ -11,8 +11,10 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
-export function SubmitDialog({ open, onOpenChange, onPreview, onSubmit, pending, error }: {
+// review = โพลนี้ต้องรอผู้ดูแลอนุมัติ (เฉพาะทั้งจุฬาฯ) · ไม่ต้อง = ส่งแล้วเจ้าของกดเปิดโหวตได้เลย
+export function SubmitDialog({ open, onOpenChange, onPreview, onSubmit, pending, error, review }: {
     open: boolean
+    review: boolean
     onOpenChange: (open: boolean) => void
     onPreview: () => void
     onSubmit: () => void
@@ -25,10 +27,14 @@ export function SubmitDialog({ open, onOpenChange, onPreview, onSubmit, pending,
             <DialogContent>
                 <div className='flex justify-center pt-4 flex-col items-center w-full'>
                     <Send className='text-primary size-14' />
-                    <span className=' font-heading text-xl py-6 font-bold'>ยืนยันการส่งขออนุมัติ ?</span>
+                    <span className=' font-heading text-xl py-6 font-bold'>{review ? 'ยืนยันการส่งขออนุมัติ ?' : 'ยืนยันการส่งโพล ?'}</span>
                     <div className=' flex flex-col items-center'>
                         <span className=' text-center max-w-full text-base'>
-                            แบบฟอร์มนี้จะถูกส่งให้ผู้ดูแลระบบตรวจสอบ<br/>และอนุมัติก่อนนำไปใช้งาน หลังจากส่งแล้วแบบฟอร์ม<br/>จะอยู่ในสถานะ “รออนุมัติ”
+                            {review ? (
+                                <>โพลทั้งจุฬาฯ จะถูกส่งให้ผู้ดูแลระบบตรวจสอบ<br/>และอนุมัติก่อนนำไปใช้งาน หลังจากส่งแล้วแบบฟอร์ม<br/>จะอยู่ในสถานะ “รออนุมัติ”</>
+                            ) : (
+                                <>โพลนี้ไม่ต้องรอผู้ดูแลอนุมัติ หลังจากส่งแล้ว<br/>แก้เนื้อหาไม่ได้ และกดเปิดโหวตได้ที่หน้าโพล</>
+                            )}
                         </span>
                         <button type='button' onClick={onPreview} className=' text-lg underline cursor-pointer font-bold'>ดูตัวอย่าง</button>
                     </div>
@@ -36,7 +42,7 @@ export function SubmitDialog({ open, onOpenChange, onPreview, onSubmit, pending,
                         <Button variant={'outline'} className="flex-1 font-heading font-bold text-base" disabled={pending} onClick={() => onOpenChange(false)}>แก้ไขต่อ</Button>
                         <Button className='flex-1' onClick={onSubmit} disabled={pending} aria-busy={pending}>
                             {pending ? <Loader2 className='animate-spin' /> : <Send />}
-                            <span className='font-heading font-bold text-base'>ส่งขออนุมัติ</span>
+                            <span className='font-heading font-bold text-base'>{review ? 'ส่งขออนุมัติ' : 'ส่งโพล'}</span>
                         </Button>
                     </div>
                 </div>

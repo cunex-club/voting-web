@@ -8,7 +8,12 @@ import { ImagesService } from '../images/images.service.js';
 import type { User } from '../users/users.repository.js';
 import { findProblems } from './completeness.js';
 import { imageRefs } from './poll-images.js';
-import { canSeePoll, canViewResults, isAcceptingVotes } from './poll-access.js';
+import {
+  canSeePoll,
+  canViewResults,
+  isAcceptingVotes,
+  needsReview,
+} from './poll-access.js';
 import {
   closesAtPassed,
   invalidOpensAt,
@@ -73,17 +78,24 @@ export class PollsService {
   }
 
   async get(user: User, id: string) {
-    const agg = await this.repo.find(id);
+    const agg = await this.repo.find(id, user);
     if (!agg || !canSeePoll(agg, user)) throw notFound();
     const { poll } = agg;
     const isOwner = poll.ownerId === user.id;
+    const isStaff = isOwner || user.role === 'admin';
 
-    const [myBallot] = await this.myBallots(user, [poll]);
+    const [[myBallot], codes] = await Promise.all([
+      this.myBallots(user, [poll]),
+      isStaff && poll.audience === 'codes'
+        ? this.repo.audienceCodes(id)
+        : undefined,
+    ]);
     return toDetail(agg, {
       isOwner,
-      canSeeReviews: isOwner || user.role === 'admin',
+      canSeeReviews: isStaff,
       myBallot: myBallot!,
       canViewResults: canViewResults(poll, user, myBallot!.submitted),
+      codes,
     });
   }
 
@@ -104,7 +116,10 @@ export class PollsService {
     const agg = await this.owned(user, id);
     if (!EDITABLE.includes(agg.poll.status)) throw locked(agg.poll.status);
 
-    const draft = toDraftInput(agg);
+    const draft = toDraftInput(
+      agg,
+      agg.poll.audience === 'codes' ? await this.repo.audienceCodes(id) : [],
+    );
     const problems = findProblems(draft, new Date());
     // The browser uploaded these itself; make sure each one really arrived
     // and really is an image before an admin ever looks at the poll.
@@ -135,12 +150,14 @@ export class PollsService {
         { problems },
       );
     }
+    // Only polls for all of Chula go through admin review. Narrower or public
+    // audiences skip the queue and wait for the owner to publish them.
     await this.move(
       user,
       id,
       EDITABLE,
       {
-        status: 'pending_review',
+        status: needsReview(agg.poll.audience) ? 'pending_review' : 'approved',
         submittedAt: new Date(),
       },
       'poll.submit',

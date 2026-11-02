@@ -33,7 +33,7 @@ interface Poll {
   text: { id: string };
 }
 
-/** Engineering + anyone who entered in 2566; approved, then published by the owner. */
+/** Engineering + anyone who entered in 2566; skips review (not Chula-wide), then published by the owner. */
 async function openPoll(
   settings: { allowAnswerEdit: boolean },
   opensAt: string | null = null,
@@ -64,10 +64,9 @@ async function openPoll(
       { type: 'text_question', title: 'ข้อเสนอแนะ' },
     ],
   });
-  expect((await owner.post(`/polls/${body.id}/submit`)).status).toBe(200);
-  expect((await admin.post(`/admin/polls/${body.id}/approve`)).status).toBe(
-    200,
-  );
+  const submitted = await owner.post(`/polls/${body.id}/submit`);
+  expect(submitted.status).toBe(200);
+  expect(submitted.body.status).toBe('approved');
   const opened = await owner
     .post(`/polls/${body.id}/publish`)
     .send(publishNow ? { now: true } : {});
@@ -226,6 +225,7 @@ describe('voting without answer edits', () => {
 
 describe('anonymity', () => {
   it('ballots hold no user reference, and keys differ per poll', async () => {
+    // respondent_code is only filled for "ระบุคนส่ง" polls (codes.e2e-spec)
     const columns = await db.query(
       "SELECT column_name FROM information_schema.columns WHERE table_name = 'ballots' ORDER BY 1",
     );
@@ -233,6 +233,7 @@ describe('anonymity', () => {
       'faculty_code',
       'id',
       'poll_id',
+      'respondent_code',
       'student_year',
       'submitted_at',
       'voter_key',
@@ -243,6 +244,10 @@ describe('anonymity', () => {
       "SELECT DISTINCT encode(voter_key, 'hex') AS k FROM ballots WHERE faculty_code = '30'",
     );
     expect(keys.rowCount).toBe(2);
+    const named = await db.query(
+      'SELECT 1 FROM ballots WHERE respondent_code IS NOT NULL',
+    );
+    expect(named.rowCount).toBe(0);
   });
 });
 

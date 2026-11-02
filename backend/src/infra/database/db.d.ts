@@ -41,7 +41,7 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
-export type PollAudience = 'chula' | 'public' | 'restricted';
+export type PollAudience = 'chula' | 'codes' | 'public' | 'restricted';
 
 export type PollStatus =
   'approved' | 'closed' | 'draft' | 'open' | 'pending_review' | 'rejected';
@@ -73,6 +73,7 @@ export interface Ballots {
   facultyCode: string | null;
   id: Generated<string>;
   pollId: string;
+  respondentCode: string | null;
   studentYear: number | null;
   submittedAt: Generated<Timestamp>;
   voterKey: Buffer;
@@ -114,6 +115,11 @@ export interface NotificationBatches {
   total: Generated<number>;
 }
 
+export interface PollAudienceCodes {
+  code: string;
+  pollId: string;
+}
+
 export interface PollAudienceRules {
   facultyCode: string | null;
   id: Generated<string>;
@@ -151,6 +157,7 @@ export interface Polls {
   deletedAt: Timestamp | null;
   description: Generated<string>;
   id: Generated<string>;
+  identifySender: Generated<boolean>;
   listedPublicly: Generated<boolean>;
   openedAt: Timestamp | null;
   opensAt: Timestamp | null;
@@ -190,6 +197,7 @@ export interface Users {
   isChulaVerified: Generated<boolean>;
   lastLoginAt: Timestamp | null;
   role: Generated<UserRole>;
+  staffId: string | null;
   studentId: string | null;
   studentYear: number | null;
 }
@@ -202,6 +210,7 @@ export interface DB {
   elementOptions: ElementOptions;
   faculties: Faculties;
   notificationBatches: NotificationBatches;
+  pollAudienceCodes: PollAudienceCodes;
   pollAudienceRules: PollAudienceRules;
   pollElements: PollElements;
   pollReviews: PollReviews;

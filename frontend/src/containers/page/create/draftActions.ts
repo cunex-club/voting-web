@@ -1,6 +1,7 @@
 import { api, errorMessage, isApiError } from '@/api'
 import type { PollDetail, Problem } from '@/api/types'
 import { formToDraft } from '@/lib/pollMappers'
+import { parseCodes } from '@/lib/codes'
 import { useCreatePollStore } from '@/store/createPollStore'
 import { useCreateDraftStore } from '@/store/createDraftStore'
 import { useElementStore, type FormItem } from '@/store/elementStore'
@@ -54,6 +55,11 @@ function describePath(path: string, items: FormItem[]) {
     // รองรับทั้ง elements.2.title และ elements[2].title
     const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean)
     const [top, index, ...rest] = parts
+    if (top === 'audience' && index === 'codes') {
+        // audience.codes.N = รหัสลำดับที่ N ในรายการที่ส่ง (บรรทัดว่าง/ซ้ำถูกตัดแล้ว) บอกเป็นตัวรหัสเลย หาง่ายกว่าเลขบรรทัด
+        const code = rest[0] !== undefined ? parseCodes(useCreatePollStore.getState().codesText)[Number(rest[0])] : undefined
+        return code ? `รหัส ${code}` : 'รายการรหัส'
+    }
     if (top === 'audience') return index === 'rules' ? 'คณะ/ปีเข้า' : 'ประเภทโพล'
     if (top === 'settings') return TOP_FIELDS.settings
     if (top !== 'elements' || index === undefined) return TOP_FIELDS[top] ?? 'ข้อมูลโพล'
@@ -110,14 +116,15 @@ export async function saveDraft(): Promise<DraftResult> {
     }
 }
 
-// ส่งขออนุมัติ = บันทึกล่าสุดก่อน แล้ว POST /submit (backend ตรวจความครบ ไม่ครบได้รายการปัญหากลับมา)
+// ส่งโพล = บันทึกล่าสุดก่อน แล้ว POST /submit (backend ตรวจความครบ ไม่ครบได้รายการปัญหากลับมา)
+// ทั้งจุฬาฯ → รออนุมัติ · ขอบเขตอื่น → อนุมัติแล้ว (เจ้าของกดเปิดโหวตเอง)
 export async function submitDraft(): Promise<DraftResult> {
     const saved = await saveDraft()
     if (!saved.ok) return saved
     try {
         return { ok: true, poll: await api.polls.submit(saved.poll.id) }
     } catch (err) {
-        return toFailure(err, 'ส่งขออนุมัติไม่สำเร็จ')
+        return toFailure(err, 'ส่งโพลไม่สำเร็จ')
     }
 }
 

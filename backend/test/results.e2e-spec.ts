@@ -40,8 +40,8 @@ beforeAll(async () => {
       { type: 'text_question', title: 'ความเห็น' },
     ],
   });
+  // public (the default audience) skips admin review
   await owner.post(`/polls/${body.id}/submit`);
-  await admin.post(`/admin/polls/${body.id}/approve`);
   const opened = await owner.post(`/polls/${body.id}/publish`);
   pollId = body.id;
   questionId = opened.body.elements[0].id;

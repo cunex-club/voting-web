@@ -1,4 +1,3 @@
-import Avatar from '@/components/ui/avatar'
 import { ReturnButton } from '@/components/common/return'
 import { LeaveDialog } from '@/components/common/leaveDialog'
 import AvatarPopup from './components/avator-popup'

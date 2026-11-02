@@ -25,6 +25,7 @@ export interface PollSummary {
   closedAt: Date | null;
   closedEarly: boolean;
   showResultsRealtime: boolean;
+  identifySender: boolean;
   questionCount: number;
   createdAt: Date;
   myBallot?: MyBallot;
@@ -48,6 +49,7 @@ export function toSummary(
     closedAt: p.closedAt,
     closedEarly: wasClosedEarly(p),
     showResultsRealtime: p.showResultsRealtime,
+    identifySender: p.identifySender,
     questionCount,
     createdAt: p.createdAt,
     ...(myBallot ? { myBallot } : {}),
@@ -61,6 +63,8 @@ export function toDetail(
     canSeeReviews: boolean;
     myBallot: MyBallot;
     canViewResults: boolean;
+    /** Codes polls, owner and admins only: the id list. */
+    codes?: string[];
   },
 ) {
   const { poll } = agg;
@@ -80,11 +84,12 @@ export function toDetail(
     closeReason: poll.closeReason,
     createdAt: poll.createdAt,
     updatedAt: poll.updatedAt,
-    audience: audienceOf(agg),
+    audience: audienceOf(agg, ctx.codes),
     settings: {
       showResultsRealtime: poll.showResultsRealtime,
       allowAnswerEdit: poll.allowAnswerEdit,
       listedPublicly: poll.listedPublicly,
+      identifySender: poll.identifySender,
     },
     resultDisplay: resultDisplayOf(poll),
     shareUrl: poll.shareUrl,
@@ -136,13 +141,18 @@ export function toPreview(agg: PollAggregate) {
     closedEarly: wasClosedEarly(poll),
     closeReason: poll.closeReason,
     audience: audienceOf(agg),
+    // Shown before login too: voters must know their id goes with the answers.
+    identifySender: poll.identifySender,
     questionCount: agg.elements.filter((e) => QUESTION_TYPES.has(e.type))
       .length,
   };
 }
 
 /** Stored poll → the same shape the editor sends, re-validated by the schema. */
-export function toDraftInput(agg: PollAggregate): PollDraftInput {
+export function toDraftInput(
+  agg: PollAggregate,
+  codes: string[] = [],
+): PollDraftInput {
   const { poll } = agg;
   return pollDraftSchema.parse({
     title: poll.title,
@@ -150,11 +160,12 @@ export function toDraftInput(agg: PollAggregate): PollDraftInput {
     coverImageUrl: poll.coverImageUrl,
     opensAt: poll.opensAt?.toISOString() ?? null,
     closesAt: poll.closesAt?.toISOString() ?? null,
-    audience: audienceOf(agg),
+    audience: audienceOf(agg, codes),
     settings: {
       showResultsRealtime: poll.showResultsRealtime,
       allowAnswerEdit: poll.allowAnswerEdit,
       listedPublicly: poll.listedPublicly,
+      identifySender: poll.identifySender,
     },
     elements: agg.elements.map((e) => ({
       type: e.type,
@@ -176,10 +187,20 @@ export function toDraftInput(agg: PollAggregate): PollDraftInput {
   });
 }
 
-function audienceOf({ poll, rules }: PollAggregate) {
-  return poll.audience === 'restricted'
-    ? { type: 'restricted' as const, rules }
-    : { type: poll.audience };
+/**
+ * Codes polls carry how many ids are listed; the ids themselves only when
+ * `codes` is given (owner and admins), never to voters.
+ */
+function audienceOf(
+  { poll, rules, codeCount }: PollAggregate,
+  codes?: string[],
+) {
+  if (poll.audience === 'restricted')
+    return { type: 'restricted' as const, rules };
+  if (poll.audience === 'codes') {
+    return { type: 'codes' as const, codeCount, ...(codes ? { codes } : {}) };
+  }
+  return { type: poll.audience };
 }
 
 function hasOptions(type: string) {

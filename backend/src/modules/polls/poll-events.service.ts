@@ -60,7 +60,7 @@ export class PollEvents {
     });
   }
 
-  /** Share link for every poll; notifications only for restricted ones. */
+  /** Share link for every poll; notifications only for restricted and codes ones. */
   async opened(pollId: string) {
     const poll = await this.db
       .selectFrom('polls')
@@ -96,8 +96,10 @@ export class PollEvents {
     }
 
     // Public polls would mean notifying the whole university for every poll:
-    // only polls aimed at specific faculties/years notify their audience.
-    if (poll.audience !== 'restricted') return { notified: 0 };
+    // only polls aimed at specific faculties/years or ids notify their audience.
+    if (poll.audience !== 'restricted' && poll.audience !== 'codes') {
+      return { notified: 0 };
+    }
 
     // One batch row per poll: a retried job doesn't notify everyone twice.
     const batch = await this.db
@@ -108,7 +110,11 @@ export class PollEvents {
       .executeTakeFirst();
     if (!batch) return { notified: 0, alreadySent: true };
 
-    const recipients = await this.recipients(pollId, poll.ownerId);
+    const recipients = await this.recipients(
+      pollId,
+      poll.ownerId,
+      poll.audience,
+    );
     const title = poll.title.slice(0, 400);
     let succeeded = 0;
     let failed = 0;
@@ -148,7 +154,11 @@ export class PollEvents {
   }
 
   /** CUNEX userIds of everyone in the poll's audience who has logged in. */
-  private async recipients(pollId: string, ownerId: string) {
+  private async recipients(
+    pollId: string,
+    ownerId: string,
+    audience: 'restricted' | 'codes',
+  ) {
     const rows = await this.db
       .selectFrom('users as u')
       .innerJoin('userIdentities as ui', (j) =>
@@ -158,24 +168,37 @@ export class PollEvents {
       .where('u.isChulaVerified', '=', true)
       .where('u.id', '!=', ownerId)
       .where((eb) =>
-        eb.exists(
-          eb
-            .selectFrom('pollAudienceRules as r')
-            .select(sql.lit(1).as('one'))
-            .where('r.pollId', '=', pollId)
-            .where((r) =>
-              r.and([
-                r.or([
-                  r('r.facultyCode', 'is', null),
-                  r('r.facultyCode', '=', r.ref('u.facultyCode')),
-                ]),
-                r.or([
-                  r('r.studentYear', 'is', null),
-                  r('r.studentYear', '=', r.ref('u.studentYear')),
-                ]),
-              ]),
+        audience === 'codes'
+          ? eb.exists(
+              eb
+                .selectFrom('pollAudienceCodes as c')
+                .select(sql.lit(1).as('one'))
+                .where('c.pollId', '=', pollId)
+                .where((c) =>
+                  c.or([
+                    c('c.code', '=', c.ref('u.studentId')),
+                    c('c.code', '=', c.ref('u.staffId')),
+                  ]),
+                ),
+            )
+          : eb.exists(
+              eb
+                .selectFrom('pollAudienceRules as r')
+                .select(sql.lit(1).as('one'))
+                .where('r.pollId', '=', pollId)
+                .where((r) =>
+                  r.and([
+                    r.or([
+                      r('r.facultyCode', 'is', null),
+                      r('r.facultyCode', '=', r.ref('u.facultyCode')),
+                    ]),
+                    r.or([
+                      r('r.studentYear', 'is', null),
+                      r('r.studentYear', '=', r.ref('u.studentYear')),
+                    ]),
+                  ]),
+                ),
             ),
-        ),
       )
       .execute();
     return rows.map((r) => r.providerSubject);

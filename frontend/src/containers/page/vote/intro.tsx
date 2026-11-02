@@ -17,7 +17,7 @@ export async function VoteIntroPage({ slug }: { slug: string }) {
             <>
                 <VoterHeader />
                 <PollIntroCard poll={previewToVoterPoll(preview, faculties)} reason='LOGIN_REQUIRED' />
-                <AnonymityNote className='mt-4' />
+                <AnonymityNote className='mt-4' identified={preview.identifySender} />
             </>
         )
     }
@@ -27,7 +27,7 @@ export async function VoteIntroPage({ slug }: { slug: string }) {
         <>
             <VoterHeader link={{ href: '/explore', label: 'ไปที่หน้าโพลที่ตอบได้' }} />
             <PollIntroCard poll={poll} reason={ineligibleReason(poll, me)} />
-            <AnonymityNote className='mt-4' />
+            <AnonymityNote className='mt-4' identified={poll.identifySender} />
         </>
     )
 }

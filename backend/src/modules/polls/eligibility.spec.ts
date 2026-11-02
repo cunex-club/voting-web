@@ -73,4 +73,12 @@ describe('isEligible', () => {
       }),
     ).toBe(false);
   });
+
+  it('lets only listed, verified accounts into codes polls', () => {
+    expect(isEligible('codes', [], eng2567, true)).toBe(true);
+    expect(isEligible('codes', [], eng2567, false)).toBe(false);
+    expect(
+      isEligible('codes', [], { ...eng2567, isChulaVerified: false }, true),
+    ).toBe(false);
+  });
 });

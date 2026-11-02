@@ -137,7 +137,7 @@ export function PublishSettings({ pollId, realtime, elements, initialSettings, i
                 )}
             </section>
 
-            <div className='sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-background px-4 py-3'>
+            <div data-bottom-bar className='sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-background px-4 py-3'>
                 {dirty && <span className='text-sm text-ink-500'>มีการเปลี่ยนแปลงที่ยังไม่บันทึก</span>}
                 <Button className='rounded-full px-6 font-heading text-base font-bold' disabled={!dirty || saving} aria-busy={saving} onClick={save}>
                     {saving ? <Loader2 className='animate-spin' /> : <Save />}

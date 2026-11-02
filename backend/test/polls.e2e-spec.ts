@@ -148,10 +148,10 @@ describe('draft lifecycle', () => {
     expect((await med.post(`/polls/${id}/submit`)).status).toBe(404);
   });
 
-  it('submit locks the poll for review', async () => {
+  it('submit locks the poll; a restricted poll skips review', async () => {
     const res = await eng.post(`/polls/${id}/submit`);
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('pending_review');
+    expect(res.body.status).toBe('approved');
     expect(res.body.submittedAt).toBeTruthy();
 
     const put = await eng
@@ -169,7 +169,16 @@ describe('draft lifecycle', () => {
     expect(audit.rowCount).toBe(1);
   });
 
-  it('admins can see a pending poll, others still cannot', async () => {
+  it('only a Chula-wide poll waits for an admin', async () => {
+    const chula = await eng
+      .post('/polls')
+      .send({ ...completeDraft(), audience: { type: 'chula' } });
+    const res = await eng.post(`/polls/${chula.body.id}/submit`);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('pending_review');
+  });
+
+  it('admins can see a submitted poll, others still cannot', async () => {
     expect((await admin.get(`/polls/${id}`)).status).toBe(200);
     expect((await med.get(`/polls/${id}`)).status).toBe(404);
   });

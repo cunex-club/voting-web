@@ -29,6 +29,8 @@ export type VoterPoll = {
     audienceScope: AudienceScope | null
     realtime: boolean
     allowAnswerEdit: boolean
+    // ระบุคนส่ง: ต้องบอกผู้ตอบก่อนเริ่มว่าเจ้าของโพลจะเห็นรหัสของเขา
+    identifySender: boolean
     items: VoteItem[]
     questionCount: number
     resultsPublished: boolean
@@ -59,6 +61,7 @@ export function toVoterPoll(poll: PollDetail, faculties: Faculty[]): VoterPoll {
         audienceScope: audienceScope(poll.audience, faculties),
         realtime: poll.settings.showResultsRealtime,
         allowAnswerEdit: poll.settings.allowAnswerEdit,
+        identifySender: poll.settings.identifySender,
         items,
         questionCount: items.filter((i) => i.kind === 'input').length,
         resultsPublished: poll.resultDisplay.published,
@@ -87,6 +90,7 @@ export function previewToVoterPoll(poll: PollPreview, faculties: Faculty[]): Vot
         audienceScope: audienceScope(poll.audience, faculties),
         realtime: false,
         allowAnswerEdit: false,
+        identifySender: poll.identifySender,
         items: [],
         questionCount: poll.questionCount,
         resultsPublished: false,
@@ -101,12 +105,15 @@ export function previewToVoterPoll(poll: PollPreview, faculties: Faculty[]): Vot
 // NOT_STARTED = เผยแพร่แล้วแต่ยังไม่ถึงเวลาเปิดที่ตั้งไว้ · LOGIN_REQUIRED = เปิดลิงก์แชร์โดยยังไม่ login
 export type IneligibleReason = 'NOT_OPEN' | 'NOT_STARTED' | 'CLOSED' | 'NOT_ELIGIBLE' | 'ALREADY_VOTED' | 'LOGIN_REQUIRED'
 
-// กติกาเดียวกับ backend: public = ใครที่ล็อกอินก็ได้ · chula = ยืนยันผ่าน CUNEX · restricted = ตรงกฎคณะ/ปีเข้า
+// กติกาเดียวกับ backend: public = ใครที่ล็อกอินก็ได้ · chula = ยืนยันผ่าน CUNEX · restricted = ตรงกฎคณะ/ปีเข้า · codes = รหัสอยู่ในรายการ
 // ในกฎเดียวกัน ช่องที่ว่าง (null) = ไม่จำกัดเรื่องนั้น
 export function isEligible(me: Me, audience: Audience) {
     if (audience.type === 'public') return true
     if (!me.isChulaVerified) return false
     if (audience.type === 'chula') return true
+    // codes: ผู้ตอบได้โพลนี้มาก็ต่อเมื่อรหัสอยู่ในรายการอยู่แล้ว (backend ไม่ส่งรายการให้)
+    // มีรายการ = เจ้าของ/แอดมินเปิดดู ซึ่งตอบได้เฉพาะเมื่อรหัสตัวเองอยู่ในรายการ
+    if (audience.type === 'codes') return !audience.codes || audience.codes.includes(me.studentId ?? '')
     return audience.rules.some((r) =>
         (!r.facultyCode || r.facultyCode === me.faculty?.code)
         && (!r.departmentCode || r.departmentCode === me.departmentCode)

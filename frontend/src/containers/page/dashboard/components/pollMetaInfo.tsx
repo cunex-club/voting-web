@@ -38,6 +38,7 @@ export function PollMetaInfo({ poll, faculties }: { poll: PollDetail; faculties:
             : poll.settings.showResultsRealtime ? 'เปิด' : 'ปิด',
     })
     rows.push({ label: 'หน้ารวมโพล', value: poll.settings.listedPublicly ? 'แสดง' : 'ไม่แสดง (เข้าได้ทางลิงก์เท่านั้น)' })
+    rows.push({ label: 'ระบุคนส่ง', value: poll.settings.identifySender ? 'เปิด · เห็นรหัสผู้ตอบคู่กับคำตอบ' : 'ปิด · ไม่ระบุตัวผู้ตอบ' })
 
     return (
         <dl className='flex flex-col gap-2'>

@@ -42,6 +42,7 @@ describe('LiveCunexClient.getProfile', () => {
     expect(profile).toEqual({
       userId: '100000000000000001',
       studentId: '6700000021',
+      staffId: null,
       facultyCode: '21',
       facultyNameTh: 'วิศวกรรมศาสตร์',
       facultyNameEn: 'Faculty of Engineering',
@@ -70,6 +71,7 @@ describe('LiveCunexClient.getProfile', () => {
     await expect(client.getProfile('t')).resolves.toEqual({
       userId: '100000000000000042',
       studentId: '6800000021',
+      staffId: null,
       facultyCode: '21',
       facultyNameTh: 'คณะวิศวกรรมศาสตร์',
       facultyNameEn: 'FACULTY OF ENGINEERING',
@@ -77,11 +79,12 @@ describe('LiveCunexClient.getProfile', () => {
     });
   });
 
-  it('accepts accounts without a student id, faculty or entry year', async () => {
+  it('keeps a staff id; accepts accounts without faculty or entry year', async () => {
     respond(200, { userId: '9', refId: '12345678', userType: 'STAFF' });
     await expect(client.getProfile('t')).resolves.toEqual({
       userId: '9',
       studentId: null,
+      staffId: '12345678',
       facultyCode: null,
       facultyNameTh: '',
       facultyNameEn: '',

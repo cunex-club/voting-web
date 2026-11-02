@@ -15,7 +15,6 @@ let app: NestExpressApplication;
 let db: pg.Client;
 let queue: Queue;
 let owner: ReturnType<typeof as>;
-let admin: ReturnType<typeof as>;
 
 beforeAll(async () => {
   ({ app, db } = await createTestApp({
@@ -24,7 +23,8 @@ beforeAll(async () => {
   }));
   queue = new Queue(POLLS_QUEUE, { connection: redisOptions(TEST_REDIS_URL) });
   owner = as(app, await loginAs(app, 'eng-2567'));
-  admin = as(app, await loginAs(app, 'admin'));
+  // the admin account still has to exist: the role UPDATE below targets it
+  await loginAs(app, 'admin');
   await loginAs(app, 'med-2566');
   await db.query(
     "UPDATE users SET role = 'admin' WHERE id = (SELECT user_id FROM user_identities WHERE provider_subject = '100000000000000099')",
@@ -55,8 +55,8 @@ async function publishedPoll() {
       },
     ],
   });
+  // restricted polls skip admin review
   await owner.post(`/polls/${body.id}/submit`);
-  await admin.post(`/admin/polls/${body.id}/approve`);
   expect((await owner.post(`/polls/${body.id}/publish`)).status).toBe(200);
   return body.id as string;
 }

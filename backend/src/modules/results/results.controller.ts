@@ -10,6 +10,10 @@ const pollId = z.uuid();
 const resultsQuery = z.object({
   breakdown: z.enum(['none', 'faculty', 'year']).default('none'),
 });
+const responsesQuery = z.object({
+  cursor: z.string().max(300).optional(),
+  limit: pageLimit(200, 50),
+});
 const textQuery = z.object({
   elementId: z.uuid(),
   cursor: z.string().max(200).optional(),
@@ -37,6 +41,31 @@ export class ResultsController {
       return;
     }
     res.type('application/json').send(body);
+  }
+
+  /** "ระบุคนส่ง": each respondent's id with their answers (owner and admins). */
+  @Get('responses')
+  responses(
+    @CurrentUser() user: User,
+    @Param('id', { schema: pollId }) id: string,
+    @Query({ schema: responsesQuery }) q: z.infer<typeof responsesQuery>,
+  ) {
+    return this.results.responses(user, id, q.cursor, q.limit);
+  }
+
+  @Get('responses.csv')
+  async responsesCsv(
+    @CurrentUser() user: User,
+    @Param('id', { schema: pollId }) id: string,
+    @Res() res: Response,
+  ) {
+    const csv = await this.results.responsesCsv(user, id);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="poll-${id}-responses.csv"`,
+    );
+    res.type('text/csv; charset=utf-8').send(csv);
   }
 
   @Get('text')

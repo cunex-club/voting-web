@@ -7,6 +7,8 @@ export interface CunexProfile {
   userId: string;
   /** Student id for students; null for staff or an unexpected format. */
   studentId: string | null;
+  /** Staff id (8 digits) for staff; null for students. */
+  staffId: string | null;
   /** Null when CUNEX gives no faculty (e.g. some staff accounts). */
   facultyCode: string | null;
   facultyNameTh: string;

@@ -16,7 +16,8 @@ export class BallotsRepository {
    * Inserts or replaces one voter's ballot. The poll row is locked FOR SHARE
    * and re-checked inside the transaction, so a vote can't land after the
    * poll closed, and owner/admin closing waits for in-flight votes.
-   * Note: nothing here records who voted — only the pseudonymous voter key.
+   * Note: nothing here records who voted — only the pseudonymous voter key —
+   * except `respondentCode` on polls that identify senders.
    */
   save(input: {
     pollId: string;
@@ -24,6 +25,7 @@ export class BallotsRepository {
     allowEdit: boolean;
     facultyCode: string | null;
     studentYear: number | null;
+    respondentCode: string | null;
     ballot: NormalizedBallot;
   }): Promise<SaveResult> {
     return this.db.transaction().execute(async (tx) => {
@@ -49,6 +51,7 @@ export class BallotsRepository {
         voterKey: input.voterKey,
         facultyCode: input.facultyCode,
         studentYear: input.studentYear,
+        respondentCode: input.respondentCode,
       });
       const row = await (
         input.allowEdit
@@ -57,6 +60,7 @@ export class BallotsRepository {
                 submittedAt: minute,
                 facultyCode: input.facultyCode,
                 studentYear: input.studentYear,
+                respondentCode: input.respondentCode,
               }),
             )
           : insert.onConflict((oc) =>
